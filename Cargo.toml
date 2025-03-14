@@ -1,0 +1,13 @@
+[package]
+name = "rust-compiler"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lalrpop = "0.22.1"
+lalrpop-util = "0.22.1"
+logos = "0.15.0"
+regex = "1.11.1"
+
+[build-dependencies]
+lalrpop = "0.22.1"
