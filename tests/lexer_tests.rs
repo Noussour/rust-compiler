@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod lexer_tests {
-    // Fix the import to use the library crate name
     use logos::Logos;
     use rust_compiler::lexer::token::Token;
 
@@ -86,17 +85,12 @@ mod lexer_tests {
     fn test_complete_program() {
         use std::fs;
 
-        // Path to the test file
         let test_file_path = "examples/valid/sample_program.ms";
-
-        // Read the test file
         let input = fs::read_to_string(test_file_path).expect("Failed to read test file");
 
         let lexer = Token::lexer(&input);
         let tokens: Vec<_> = lexer.collect();
 
-        // Assert that there are no errors and expected token count
         assert!(tokens.iter().all(|t| t.is_ok()));
-        // Add more specific assertions if needed
     }
 }

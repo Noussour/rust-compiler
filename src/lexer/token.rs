@@ -1,10 +1,7 @@
-// Defines all tokens recognized by our compiler
-// Each token represents the smallest meaningful unit in the language syntax
+// Token definitions for the compiler
+use logos::Logos;
+use std::fmt;
 
-use logos::Logos; // For lexical analysis
-use std::fmt; // For token display formatting
-
-// All possible tokens in our language
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Token {
     // Language keywords
@@ -22,6 +19,7 @@ pub enum Token {
     Int,
     #[token("Float")]
     Float,
+
     // Control flow
     #[token("if")]
     If,
@@ -41,6 +39,7 @@ pub enum Token {
     To,
     #[token("step")]
     Step,
+
     // I/O operations
     #[token("input")]
     Input,
@@ -109,26 +108,22 @@ pub enum Token {
     #[token("!")]
     Not,
 
-    // Literal values
-    // Integer literals
+    // Literals
     #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
     IntLiteral(i32),
 
-    // Float literals
     #[regex("[0-9]+\\.[0-9]+", |lex| lex.slice().parse().ok())]
     FloatLiteral(f32),
 
-    // String literals
     #[regex("\"[^\"]*\"", |lex| {
         let s = lex.slice();
-        Some(s[1..s.len()-1].to_string())  // Strip quotes
+        Some(s[1..s.len()-1].to_string())
     })]
     StringLiteral(String),
 
-    // Identifiers (variable and function names)
+    // Identifiers
     #[regex("[a-zA-Z][a-zA-Z0-9_]*", |lex| {
         let s = lex.slice();
-        // Max 14 chars, no consecutive underscores
         if s.len() <= 14 && !s.contains("__") {
             Some(s.to_string())
         } else {
@@ -138,20 +133,16 @@ pub enum Token {
     Identifier(String),
 
     // Ignored tokens
-    // Comments - both styles get skipped
     #[regex("<\\!-([^-\n]|(-[^!\n]))*-\\!>", logos::skip)]
     #[regex("\\{--[^-]*--\\}", logos::skip)]
     Comment,
 
-    // Whitespace gets skipped too
     #[regex(r"[ \t\n\r]+", logos::skip)]
     Whitespace,
 
-    // For invalid input
     Error,
 }
 
-// Custom display formatting for tokens
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
