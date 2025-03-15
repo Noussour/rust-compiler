@@ -84,21 +84,15 @@ mod lexer_tests {
 
     #[test]
     fn test_complete_program() {
-        // Test with a small complete program example
-        let input = r#"
-            MainPrgm example;
-            Var
-                x: Int;
-                y: Float;
-            BeginPg
-                x := 10;
-                y := 20.5;
-                if (x > 5) then
-                    output("x is greater than 5");
-                EndPg
-        "#;
+        use std::fs;
 
-        let lexer = Token::lexer(input);
+        // Path to the test file
+        let test_file_path = "examples/valid/sample_program.ms";
+
+        // Read the test file
+        let input = fs::read_to_string(test_file_path).expect("Failed to read test file");
+
+        let lexer = Token::lexer(&input);
         let tokens: Vec<_> = lexer.collect();
 
         // Assert that there are no errors and expected token count
