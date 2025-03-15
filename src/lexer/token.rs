@@ -139,7 +139,7 @@ pub enum Token {
 
     // Ignored tokens
     // Comments - both styles get skipped
-    #[regex("<\\s*!-([^-]|(-[^!]))*-\\s*!>", logos::skip)]
+    #[regex("<\\s*!-([^-\n]|(-[^!\n]))*-\\s*!>", logos::skip)]
     #[regex("\\{--[^-]*--\\}", logos::skip)]
     Comment,
 
