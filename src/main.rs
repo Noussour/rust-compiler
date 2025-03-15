@@ -1,6 +1,7 @@
 mod lexer;
 
 use crate::lexer::Lexer;
+use colored::*;
 
 fn main() {
     // Example MiniSoft program
@@ -20,21 +21,29 @@ fn main() {
     EndPg
     "#;
 
-    println!("Source code:");
+    println!("{}", "Source code:".bold().underline());
     println!("{}\n", source_code);
 
     // Create lexer and tokenize the source
     let lexer = Lexer::new(source_code);
+    let tokens: Vec<_> = lexer.collect();
 
-    println!("Tokens:");
-    for token_with_pos in lexer {
+    println!("{}", "Tokens:".bold().underline());
+    for token_with_pos in &tokens {
+        let token_name = format!("{:?}", token_with_pos.token).green();
+        let token_value = token_with_pos.text.yellow();
+        let position = format!(
+            "Line {}, Col {}",
+            token_with_pos.position.line, token_with_pos.position.column
+        )
+        .blue();
+
         println!(
-            "{:?} (value: '{}') at Line {}, Column {} (span: {:?})",
-            token_with_pos.token,
-            token_with_pos.text, // Assuming you've added a 'text' field to TokenWithPosition
-            token_with_pos.position.line,
-            token_with_pos.position.column,
-            token_with_pos.span
+            "{}  →  {}  {}  [span: {}]",
+            token_name,
+            token_value,
+            position,
+            format!("{:?}", token_with_pos.span).magenta()
         );
     }
 }

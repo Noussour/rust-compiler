@@ -8,48 +8,47 @@ use std::fmt; // For token display formatting
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Token {
     // Language keywords
-    // (priority=1 ensures keywords take precedence over identifiers)
-    #[token("MainPrgm", priority = 1)]
+    #[token("MainPrgm")]
     MainPrgm,
-    #[token("Var", priority = 1)]
+    #[token("Var")]
     Var,
-    #[token("BeginPg", priority = 1)]
+    #[token("BeginPg")]
     BeginPg,
-    #[token("EndPg", priority = 1)]
+    #[token("EndPg")]
     EndPg,
-    #[token("let", priority = 1)]
+    #[token("let")]
     Let,
-    #[token("Int", priority = 1)]
+    #[token("Int")]
     Int,
-    #[token("Float", priority = 1)]
+    #[token("Float")]
     Float,
     // Control flow
-    #[token("if", priority = 1)]
+    #[token("if")]
     If,
-    #[token("then", priority = 1)]
+    #[token("then")]
     Then,
-    #[token("else", priority = 1)]
+    #[token("else")]
     Else,
-    #[token("while", priority = 1)]
+    #[token("while")]
     While,
-    #[token("for", priority = 1)]
+    #[token("for")]
     For,
-    #[token("do", priority = 1)]
+    #[token("do")]
     Do,
-    #[token("from", priority = 1)]
+    #[token("from")]
     From,
-    #[token("to", priority = 1)]
+    #[token("to")]
     To,
-    #[token("step", priority = 1)]
+    #[token("step")]
     Step,
     // I/O operations
-    #[token("input", priority = 1)]
+    #[token("input")]
     Input,
-    #[token("output", priority = 1)]
+    #[token("output")]
     Output,
-    #[token("@define", priority = 1)]
+    #[token("@define")]
     Define,
-    #[token("Const", priority = 1)]
+    #[token("Const")]
     Const,
 
     // Punctuation and symbols
@@ -103,9 +102,9 @@ pub enum Token {
     NotEqual,
 
     // Logic operators
-    #[token("AND", priority = 1)]
+    #[token("AND")]
     And,
-    #[token("OR", priority = 1)]
+    #[token("OR")]
     Or,
     #[token("!")]
     Not,
@@ -127,7 +126,7 @@ pub enum Token {
     StringLiteral(String),
 
     // Identifiers (variable and function names)
-    #[regex("[a-zA-Z][a-zA-Z0-9_]*[a-zA-Z0-9]", |lex| {
+    #[regex("[a-zA-Z][a-zA-Z0-9_]*", |lex| {
         let s = lex.slice();
         // Max 14 chars, no consecutive underscores
         if s.len() <= 14 && !s.contains("__") {
@@ -135,7 +134,7 @@ pub enum Token {
         } else {
             None
         }
-    }, priority = 0)] // Lower priority than keywords
+    })]
     Identifier(String),
 
     // Ignored tokens
