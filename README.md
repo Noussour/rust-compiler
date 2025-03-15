@@ -20,8 +20,9 @@ MiniSoft is a simple programming language with the following features:
 ## Project Structure
 
 ```
-minisoft-compiler/
+rust-compiler/
 ├── Cargo.toml
+├── build.rs             # Build script for LALRPOP
 ├── README.md
 ├── examples/
 │   ├── valid/
