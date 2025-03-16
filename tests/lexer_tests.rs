@@ -15,9 +15,13 @@ mod lexer_tests {
 
     #[test]
     fn test_literals() {
-        let mut lexer = Token::lexer("123 45.67 \"hello world\"");
+        let mut lexer = Token::lexer("123 +456 -789 45.67 +12.34 -56.78 \"hello world\"");
         assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(123))));
+        assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(456))));
+        assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(-789))));
         assert_eq!(lexer.next(), Some(Ok(Token::FloatLiteral(45.67))));
+        assert_eq!(lexer.next(), Some(Ok(Token::FloatLiteral(12.34))));
+        assert_eq!(lexer.next(), Some(Ok(Token::FloatLiteral(-56.78))));
         assert_eq!(
             lexer.next(),
             Some(Ok(Token::StringLiteral("hello world".to_string())))

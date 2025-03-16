@@ -109,10 +109,10 @@ pub enum Token {
     Not,
 
     // Literals
-    #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
+    #[regex("[+-]?[0-9]+", |lex| lex.slice().parse().ok())]
     IntLiteral(i32),
 
-    #[regex("[0-9]+\\.[0-9]+", |lex| lex.slice().parse().ok())]
+    #[regex("[+-]?[0-9]+\\.[0-9]+", |lex| lex.slice().parse().ok())]
     FloatLiteral(f32),
 
     #[regex("\"[^\"]*\"", |lex| {
