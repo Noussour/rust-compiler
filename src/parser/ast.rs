@@ -93,6 +93,7 @@ pub enum UnaryOperator {
 
 impl Literal {
     /// Get the type of this literal
+    #[allow(dead_code)]
     pub fn get_type(&self) -> Type {
         match self {
             Literal::Int(_) => Type::Int,

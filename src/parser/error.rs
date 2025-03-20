@@ -10,13 +10,6 @@ pub enum ParseError {
         column: usize,
     },
 
-    /// Unknown token
-    UnknownToken {
-        token: String,
-        line: usize,
-        column: usize,
-    },
-
     /// Unexpected token
     UnexpectedToken {
         expected: String,
@@ -49,16 +42,6 @@ impl fmt::Display for ParseError {
                 line, column, message
             ),
 
-            ParseError::UnknownToken {
-                token,
-                line,
-                column,
-            } => write!(
-                f,
-                "Unknown token '{}' at line {}, column {}",
-                token, line, column
-            ),
-
             ParseError::UnexpectedToken {
                 expected,
                 found,
@@ -86,8 +69,3 @@ impl fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
-
-/// Convert line and column to a displayable location string
-pub fn location_string(line: usize, column: usize) -> String {
-    format!("{}:{}", line, column)
-}

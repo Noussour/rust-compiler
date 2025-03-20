@@ -2,7 +2,7 @@ pub mod ast;
 pub mod error;
 
 #[allow(unused_imports)]
-mod parser {
+mod grammar_parser {
     include!(concat!(env!("OUT_DIR"), "/parser/grammar.rs"));
 }
 
@@ -27,7 +27,7 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
     let lexer = token_inputs.into_iter();
 
     // Use the LALRPOP-generated parser
-    match parser::ProgramParser::new().parse(lexer) {
+    match grammar_parser::ProgramParser::new().parse(lexer) {
         Ok(program) => Ok(program),
         Err(err) => {
             match err {
@@ -99,8 +99,8 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
 }
 
 /// Parse source code directly to AST
-
 /// Convenience function that runs both lexing and parsing
+#[allow(dead_code)]
 pub fn parse_source(source: &str) -> Result<Program, ParseError> {
     let lexer = Lexer::new(source);
     let tokens: Vec<TokenWithPosition> = lexer.collect();
