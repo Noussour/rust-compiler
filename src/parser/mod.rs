@@ -11,28 +11,25 @@ use crate::lexer::token::Token;
 use crate::parser::ast::Program;
 use crate::parser::error::ParseError;
 
-/// Parse a sequence of tokens into an AST
+/// Parses tokens into an AST
 ///
-/// This function takes a vector of tokens produced by the lexer
-/// and converts them into an Abstract Syntax Tree representation
-/// of the MiniSoft program.
+/// Takes the lexer's tokens and turns them into a proper syntax tree
+/// that represents our MiniSoft program
 pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
-    // Convert tokens to the format expected by LALRPOP
+    // Need to reformat tokens for LALRPOP
     let token_inputs: Vec<(usize, Token, usize)> = tokens
         .iter()
         .map(|t| (t.span.start, t.token.clone(), t.span.end))
         .collect();
 
-    // Create a LALRPOP lexer
     let lexer = token_inputs.into_iter();
 
-    // Use the LALRPOP-generated parser
     match grammar_parser::ProgramParser::new().parse(lexer) {
         Ok(program) => Ok(program),
         Err(err) => {
             match err {
                 lalrpop_util::ParseError::InvalidToken { location } => {
-                    // Find the token position from our original tokens
+                    // Grab the token info based on position
                     if let Some(token) = tokens.iter().find(|t| t.span.start == location) {
                         Err(ParseError::SyntaxError {
                             message: "Invalid token".to_string(),
@@ -49,7 +46,7 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
                     location: _,
                     expected,
                 } => {
-                    // Find the last token position
+                    // Get position from the last token
                     if let Some(last_token) = tokens.last() {
                         Err(ParseError::UnexpectedEOF {
                             expected: expected.join(", "),
@@ -64,7 +61,7 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
                     token: (start, token, _end),
                     expected,
                 } => {
-                    // Find the token position from our original tokens
+                    // Look up the original token info
                     if let Some(token_info) = tokens.iter().find(|t| t.span.start == start) {
                         Err(ParseError::UnexpectedToken {
                             expected: expected.join(", "),
@@ -79,7 +76,7 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
                 lalrpop_util::ParseError::ExtraToken {
                     token: (start, token, _),
                 } => {
-                    // Find the token position from our original tokens
+                    // Find matching token in our original list
                     if let Some(token_info) = tokens.iter().find(|t| t.span.start == start) {
                         Err(ParseError::SyntaxError {
                             message: format!("Extra token: {}", token),
@@ -98,8 +95,8 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
     }
 }
 
-/// Parse source code directly to AST
-/// Convenience function that runs both lexing and parsing
+/// One-step parsing from source to AST
+/// Handles both lexing and parsing in a single function
 #[allow(dead_code)]
 pub fn parse_source(source: &str) -> Result<Program, ParseError> {
     let lexer = Lexer::new(source);

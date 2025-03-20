@@ -1,4 +1,4 @@
-// Abstract Syntax Tree for MiniSoft language
+// AST for MiniSoft language
 
 /// Program is the root of the AST
 #[derive(Debug, Clone, PartialEq)]
@@ -8,15 +8,14 @@ pub struct Program {
     pub statements: Vec<Statement>,
 }
 
-/// Declaration types
 #[derive(Debug, Clone, PartialEq)]
 pub enum Declaration {
-    Variable(Vec<String>, Type),     // names, type
-    Array(Vec<String>, Type, usize), // names, type, size
-    Constant(String, Type, Literal), // name, type, value
+    Variable(Vec<String>, Type),
+    Array(Vec<String>, Type, usize),
+    Constant(String, Type, Literal),
 }
 
-/// Data types supported by MiniSoft
+/// Data types in MiniSoft
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Int,
@@ -32,29 +31,26 @@ impl std::fmt::Display for Type {
     }
 }
 
-/// Statement types
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    Assignment(Expression, Expression),             // target, value
-    If(Expression, Vec<Statement>, Vec<Statement>), // condition, then_block, else_block
-    DoWhile(Vec<Statement>, Expression),            // body, condition
-    For(String, Expression, Expression, Expression, Vec<Statement>), // var, from, to, step, body
-    Input(String),                                  // variable name
-    Output(Vec<Expression>),                        // expressions to output
+    Assignment(Expression, Expression),
+    If(Expression, Vec<Statement>, Vec<Statement>),
+    DoWhile(Vec<Statement>, Expression),
+    For(String, Expression, Expression, Expression, Vec<Statement>),
+    Input(String),
+    Output(Vec<Expression>),
     Empty,
 }
 
-/// Expression types
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Identifier(String),
-    ArrayAccess(String, Box<Expression>), // name, index
+    ArrayAccess(String, Box<Expression>),
     Literal(Literal),
     BinaryOp(Box<Expression>, Operator, Box<Expression>),
     UnaryOp(UnaryOperator, Box<Expression>),
 }
 
-/// Literal values
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Int(i32),
@@ -84,7 +80,6 @@ pub enum Operator {
     Or,
 }
 
-/// Unary operators
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Negate,

@@ -1,16 +1,16 @@
 use std::fmt;
 
-/// Errors that can occur during parsing
+/// Parser error types
 #[derive(Debug, Clone)]
 pub enum ParseError {
-    /// Invalid token or syntax
+    /// Syntax problem at a specific location
     SyntaxError {
         message: String,
         line: usize,
         column: usize,
     },
 
-    /// Unexpected token
+    /// Got a token we weren't expecting
     UnexpectedToken {
         expected: String,
         found: String,
@@ -18,14 +18,14 @@ pub enum ParseError {
         column: usize,
     },
 
-    /// Unexpected end of file
+    /// Hit the end of file too soon
     UnexpectedEOF {
         expected: String,
         line: usize,
         column: usize,
     },
 
-    /// General parser error
+    /// Catch-all for other parser problems
     Other(String),
 }
 
