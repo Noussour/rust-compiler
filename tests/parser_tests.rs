@@ -94,6 +94,7 @@ mod parser_tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_constant_declarations() {
         let source = "
             MainPrgm test ;
