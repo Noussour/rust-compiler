@@ -1,7 +1,257 @@
 use std::str::FromStr;
+use crate::lexer::token::Token;
+use crate::parser::ast::{Program, Declaration, Statement, Expression, Operator, UnaryOperator, Type, Literal};
 
-grammar;
+grammar<'input>;
 
-pub Term: i32 = {
-    r"[0-9]+" => i32::from_str(<>).unwrap(),
+// External token type from our Logos lexer
+extern {
+    type Location = usize;
+    type Error = String;
+
+    enum Token {
+        // Language keywords
+        "MainPrgm" => Token::MainPrgm,
+        "Var" => Token::Var,
+        "BeginPg" => Token::BeginPg,
+        "EndPg" => Token::EndPg,
+        "let" => Token::Let,
+        "Int" => Token::Int,
+        "Float" => Token::Float,
+        
+        // Control flow
+        "if" => Token::If,
+        "then" => Token::Then,
+        "else" => Token::Else,
+        "while" => Token::While,
+        "for" => Token::For,
+        "do" => Token::Do,
+        "from" => Token::From,
+        "to" => Token::To,
+        "step" => Token::Step,
+        
+        // I/O operations
+        "input" => Token::Input,
+        "output" => Token::Output,
+        "@define" => Token::Define,
+        "Const" => Token::Const,
+        
+        // Punctuation
+        ";" => Token::Semicolon,
+        "," => Token::Comma,
+        ":" => Token::Colon,
+        "[" => Token::OpenBracket,
+        "]" => Token::CloseBracket,
+        "{" => Token::OpenBrace,
+        "}" => Token::CloseBrace,
+        "(" => Token::OpenParen,
+        ")" => Token::CloseParen,
+        
+        // Assignment
+        ":=" => Token::Assign,
+        "=" => Token::Equals,
+        
+        // Arithmetic operators
+        "+" => Token::Plus,
+        "-" => Token::Minus,
+        "*" => Token::Multiply,
+        "/" => Token::Divide,
+        
+        // Comparison operators
+        ">" => Token::GreaterThan,
+        "<" => Token::LessThan,
+        ">=" => Token::GreaterEqual,
+        "<=" => Token::LessEqual,
+        "==" => Token::Equal,
+        "!=" => Token::NotEqual,
+        
+        // Logical operators
+        "AND" => Token::And,
+        "OR" => Token::Or,
+        "!" => Token::Not,
+        
+        // Literals and identifiers
+        Int => Token::IntLiteral(<i32>),
+        Float => Token::FloatLiteral(<f32>),
+        String => Token::StringLiteral(<String>),
+        Idf => Token::Identifier(<String>),  // Renamed to avoid conflict
+    }
+}
+
+// Program is the starting rule
+pub Program: Program = {
+    "MainPrgm" <name:Id> ";" "Var" <decls:Declaration*> "BeginPg" "{" <stmts:Statement*> "}" "EndPg" ";" => {
+        Program {
+            name,
+            declarations: decls,
+            statements: stmts,
+        }
+    }
+};
+
+// Declaration rules
+Declaration: Declaration = {
+    "let" <names:IdList> ":" <ty:TypeSpec> ";" => {
+        Declaration::Variable(names, ty)
+    },
+    "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" ";" => {
+        Declaration::Array(names, ty, size as usize)
+    },
+    "@define" "Const" <name:Id> ":" <ty:TypeSpec> "=" <value:LiteralValue> ";" => {
+        Declaration::Constant(name, ty, value)
+    }
+};
+
+// Type specification
+TypeSpec: Type = {
+    "Int" => Type::Int,
+    "Float" => Type::Float,
+};
+
+// Statement rules
+Statement: Statement = {
+    <target:LValue> ":=" <value:Expression> ";" => {
+        Statement::Assignment(target, value)
+    },
+    "if" "(" <cond:Expression> ")" "then" "{" <then_block:Statement*> "}" "else" "{" <else_block:Statement*> "}" => {
+        Statement::If(cond, then_block, else_block)
+    },
+    "do" "{" <body:Statement*> "}" "while" "(" <cond:Expression> ")" ";" => {
+        Statement::DoWhile(body, cond)
+    },
+    "for" <var:Id> "from" <from:Expression> "to" <to:Expression> "step" <step:Expression> "{" <body:Statement*> "}" => {
+        Statement::For(var, from, to, step, body)
+    },
+    "input" "(" <var:Id> ")" ";" => {
+        Statement::Input(var)
+    },
+    "output" "(" <exprs:ExprList> ")" ";" => {
+        Statement::Output(exprs)
+    },
+    ";" => Statement::Empty,
+};
+
+// Left value (assignment target)
+LValue: Expression = {
+    <id:Id> => Expression::Identifier(id),
+    <id:Id> "[" <idx:Expression> "]" => Expression::ArrayAccess(id, Box::new(idx)),
+};
+
+// Expression grammar with operator precedence
+Expression: Expression = {
+    LogicalExpr,
+};
+
+LogicalExpr: Expression = {
+    <lhs:LogicalExpr> "OR" <rhs:ComparisonExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::Or, Box::new(rhs))
+    },
+    <lhs:LogicalExpr> "AND" <rhs:ComparisonExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::And, Box::new(rhs))
+    },
+    ComparisonExpr,
+};
+
+ComparisonExpr: Expression = {
+    <lhs:ComparisonExpr> "==" <rhs:AdditiveExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::Equal, Box::new(rhs))
+    },
+    <lhs:ComparisonExpr> "!=" <rhs:AdditiveExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::NotEqual, Box::new(rhs))
+    },
+    <lhs:ComparisonExpr> "<" <rhs:AdditiveExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::LessThan, Box::new(rhs))
+    },
+    <lhs:ComparisonExpr> ">" <rhs:AdditiveExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::GreaterThan, Box::new(rhs))
+    },
+    <lhs:ComparisonExpr> "<=" <rhs:AdditiveExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::LessEqual, Box::new(rhs))
+    },
+    <lhs:ComparisonExpr> ">=" <rhs:AdditiveExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::GreaterEqual, Box::new(rhs))
+    },
+    AdditiveExpr,
+};
+
+AdditiveExpr: Expression = {
+    <lhs:AdditiveExpr> "+" <rhs:MultiplicativeExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::Add, Box::new(rhs))
+    },
+    <lhs:AdditiveExpr> "-" <rhs:MultiplicativeExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::Subtract, Box::new(rhs))
+    },
+    MultiplicativeExpr,
+};
+
+MultiplicativeExpr: Expression = {
+    <lhs:MultiplicativeExpr> "*" <rhs:UnaryExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::Multiply, Box::new(rhs))
+    },
+    <lhs:MultiplicativeExpr> "/" <rhs:UnaryExpr> => {
+        Expression::BinaryOp(Box::new(lhs), Operator::Divide, Box::new(rhs))
+    },
+    UnaryExpr,
+};
+
+UnaryExpr: Expression = {
+    "!" <expr:PrimaryExpr> => {
+        Expression::UnaryOp(UnaryOperator::Not, Box::new(expr))
+    },
+    "-" <expr:PrimaryExpr> => {
+        Expression::UnaryOp(UnaryOperator::Negate, Box::new(expr))
+    },
+    PrimaryExpr,
+};
+
+PrimaryExpr: Expression = {
+    <id:Id> => Expression::Identifier(id),
+    <id:Id> "[" <idx:Expression> "]" => Expression::ArrayAccess(id, Box::new(idx)),
+    <lit:LiteralValue> => Expression::Literal(lit),
+    "(" <expr:Expression> ")" => expr,
+};
+
+// Literal values
+LiteralValue: Literal = {
+    <n:Int> => Literal::Int(n),
+    <f:Float> => Literal::Float(f),
+    <s:StringLiteral> => Literal::String(s),
+};
+
+// Helper rules for comma-separated lists
+IdList: Vec<String> = {
+    <v:(<Id> ",")*> <e:Id> => {
+        let mut v = v;
+        v.push(e);
+        v
+    }
+};
+
+ExprList: Vec<Expression> = {
+    <v:(<Expression> ",")*> <e:Expression> => {
+        let mut v = v;
+        v.push(e);
+        v
+    },
+    => vec![],
+};
+
+// Helper rule to extract identifier string
+Id: String = {
+    Idf => <>,
+};
+
+// Helper rule for integer literals
+IntLiteral: i32 = {
+    Int => <>,
+};
+
+// Helper rule for float literals
+FloatLiteral: f32 = {
+    Float => <>,
+};
+
+// Helper rule for string literals
+StringLiteral: String = {
+    String => <>,
 };

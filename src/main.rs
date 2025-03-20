@@ -1,6 +1,8 @@
 mod lexer;
+mod parser;
 
 use crate::lexer::Lexer;
+use crate::parser::parse;
 use colored::*;
 use std::env;
 use std::fs;
@@ -31,10 +33,9 @@ fn main() {
     let lexer = Lexer::new(&source_code);
     let tokens: Vec<_> = lexer.collect();
 
-    // Display tokens (rest of the code remains the same)
+    // Display tokens 
     println!("{}", "Tokens:".bold().underline());
     for token_with_pos in &tokens {
-        // Token display code unchanged...
         let token_name = format!("{:?}", token_with_pos.token).green();
         let token_value = token_with_pos.text.yellow();
         let position = format!(
@@ -50,5 +51,18 @@ fn main() {
             position,
             format!("{:?}", token_with_pos.span).magenta()
         );
+    }
+    
+    // Try parsing the tokens and print the result
+    println!("\n{}", "Parsing:".bold().underline());
+    match parse(tokens) {
+        Ok(program) => {
+            println!("{}", "AST:".green());
+            println!("{:#?}", program);
+        },
+        Err(err) => {
+            println!("{}", "Parser Error:".red());
+            println!("{}", err);
+        }
     }
 }

@@ -134,7 +134,7 @@ pub enum Token {
 
     // Ignored tokens
     #[regex("<\\!-([^-\n]|(-[^!\n]))*-\\!>", logos::skip)]
-    #[regex("\\{--[^-]*--\\}", logos::skip)]
+    #[regex("\\{--([^-]|(-[^-]))*--\\}", logos::skip)]
     Comment,
 
     #[regex(r"[ \t\n\r]+", logos::skip)]

@@ -6,8 +6,12 @@ Var
   @define Const MAX_TEMP: Float = +100.0;
   @define Const MIN_TEMP: Float = -0.0;
   @define Const DEFAULT_TEMP: Float = 25.5;
-  let testValue1: Int = +42;
-  let testValue2: Int = -15;
+  {--
+    ASK THE PROF :
+      - IF AFFECTATION OF A VARIABLE IN THE DECLARATION PART IS ALLOWED
+  --}
+  <!- let testValue1: Int = +42; -!>
+  <!- let testValue2: Int = -15; -!>
 
 BeginPg
 {
@@ -18,17 +22,28 @@ BeginPg
   
   <!- Input phase -!>
   for i from 0 to 9 step 1 {
-    output("Enter temperature reading #", i+1, ": ");
-    input(temperatures[i]);
+    {-- 
+     ASK THE PROF : 
+      - IF "i+1" IS ALLOWED INSIDE OUTPUT
+      - IF PUTTING ARRAY ELEMENT INSIDE INPUT IS ALLOWED
+    --}
+    <!- output("Enter temperature reading #", i+1, ": "); -!>
+    <!- input(temperatures[i]); -!>
     
     <!- Validate temperature range -!>
-    if (temperatures[i] > +MAX_TEMP) then {
+    if (temperatures[i] > MAX_TEMP) then {
       output("Warning: Temperature exceeds maximum value!");
       temperatures[i] := MAX_TEMP;
     } else {
       if (temperatures[i] < -10.5) then {
         output("Warning: Temperature well below minimum value!");
         temperatures[i] := MIN_TEMP;
+      } else {
+        {--
+          ASK THE PROF:
+            - IF WE CAN IMPLEMENT IF ALONE WITHOUT ELSE
+        --}
+        <!- THE ELSE IS OBLIGATED IN THE PROJECT DOC -!>
       }
     }
     
@@ -43,7 +58,7 @@ BeginPg
   counter := -1;  <!- Start with -1 and increment first -!>
   do {
     counter := counter + 1;
-    output("Reading #", counter+1, ": ", temperatures[counter]);
+    <!- output("Reading #", counter+1, ": ", temperatures[counter]); -!>
   } while (counter < +9);
   
   output("Average temperature: ", average);
