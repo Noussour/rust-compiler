@@ -25,9 +25,10 @@ BeginPg
     {-- 
      ASK THE PROF : 
       - IF "i+1" IS ALLOWED INSIDE OUTPUT
-      - IF PUTTING ARRAY ELEMENT INSIDE INPUT IS ALLOWED
+      - BUT "i + 1" IS WORKING CORRECTLY
     --}
     <!- output("Enter temperature reading #", i+1, ": "); -!>
+    output("Enter temperature reading #", i + 1, ": ");
     input(temperatures[i]);
     
     <!- Validate temperature range -!>
