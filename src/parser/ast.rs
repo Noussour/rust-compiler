@@ -12,6 +12,8 @@ pub struct Program {
 pub enum Declaration {
     Variable(Vec<String>, Type),
     Array(Vec<String>, Type, usize),
+    VariableWithInit(Vec<String>, Type, Expression),
+    ArrayWithInit(Vec<String>, Type, usize, Vec<Expression>),
     Constant(String, Type, Literal),
 }
 

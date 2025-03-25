@@ -95,6 +95,92 @@ mod parser_tests {
 
     #[test]
     #[allow(clippy::approx_constant)]
+    fn test_variable_with_initialization() {
+        let source = "
+        MainPrgm test ;
+        Var
+        let x : Int = 10 ;
+        let y, z : Float = 3.14 ;
+        BeginPg { } EndPg ;
+    ";
+
+        let program = parse_test(source);
+
+        assert_eq!(program.declarations.len(), 2);
+
+        // Test single variable initialization
+        match &program.declarations[0] {
+            Declaration::VariableWithInit(names, typ, value) => {
+                assert_eq!(names.len(), 1);
+                assert_eq!(names[0], "x");
+                assert!(matches!(typ, Type::Int));
+                assert!(matches!(value, Expression::Literal(Literal::Int(10))));
+            }
+            _ => panic!("Expected variable declaration with initialization"),
+        }
+
+        // Test multiple variables initialization
+        match &program.declarations[1] {
+            Declaration::VariableWithInit(names, typ, value) => {
+                assert_eq!(names.len(), 2);
+                assert_eq!(names[0], "y");
+                assert_eq!(names[1], "z");
+                assert!(matches!(typ, Type::Float));
+                assert!(matches!(value, Expression::Literal(Literal::Float(v)) if *v == 3.14));
+            }
+            _ => panic!("Expected variable declaration with initialization"),
+        }
+    }
+
+    #[test]
+    fn test_array_with_initialization() {
+        let source = "
+        MainPrgm test ;
+        Var
+        let arr : [Int; 3] = {1, 2, 3} ;
+        let matrix1, matrix2 : [Float; 2] = {1.1, 2.2} ;
+        BeginPg { } EndPg ;
+    ";
+
+        let program = parse_test(source);
+
+        assert_eq!(program.declarations.len(), 2);
+
+        // Test array initialization
+        match &program.declarations[0] {
+            Declaration::ArrayWithInit(names, typ, size, values) => {
+                assert_eq!(names.len(), 1);
+                assert_eq!(names[0], "arr");
+                assert!(matches!(typ, Type::Int));
+                assert_eq!(*size, 3);
+                assert_eq!(values.len(), 3);
+
+                assert!(matches!(&values[0], Expression::Literal(Literal::Int(1))));
+                assert!(matches!(&values[1], Expression::Literal(Literal::Int(2))));
+                assert!(matches!(&values[2], Expression::Literal(Literal::Int(3))));
+            }
+            _ => panic!("Expected array declaration with initialization"),
+        }
+
+        // Test multiple arrays initialization
+        match &program.declarations[1] {
+            Declaration::ArrayWithInit(names, typ, size, values) => {
+                assert_eq!(names.len(), 2);
+                assert_eq!(names[0], "matrix1");
+                assert_eq!(names[1], "matrix2");
+                assert!(matches!(typ, Type::Float));
+                assert_eq!(*size, 2);
+                assert_eq!(values.len(), 2);
+
+                assert!(matches!(&values[0], Expression::Literal(Literal::Float(v)) if *v == 1.1));
+                assert!(matches!(&values[1], Expression::Literal(Literal::Float(v)) if *v == 2.2));
+            }
+            _ => panic!("Expected array declaration with initialization"),
+        }
+    }
+
+    #[test]
+    #[allow(clippy::approx_constant)]
     fn test_constant_declarations() {
         let source = "
             MainPrgm test ;
@@ -322,7 +408,7 @@ mod parser_tests {
 
         match &program.statements[0] {
             Statement::Input(var) => {
-                assert_eq!(var, "name");
+                assert!(matches!(var, Expression::Identifier(id) if id == "name"));
             }
             _ => panic!("Expected input statement"),
         }

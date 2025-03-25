@@ -97,6 +97,12 @@ Declaration: Declaration = {
     "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" ";" => {
         Declaration::Array(names, ty, size as usize)
     },
+    "let" <names:IdList> ":" <ty:TypeSpec> "=" <value:Expression> ";" => {
+        Declaration::VariableWithInit(names, ty, value)
+    },
+    "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" "=" "{" <values:ExprList> "}" ";" => {
+        Declaration::ArrayWithInit(names, ty, size as usize, values)
+    },
     "@define" "Const" <name:Id> ":" <ty:TypeSpec> "=" <value:LiteralValue> ";" => {
         Declaration::Constant(name, ty, value)
     }

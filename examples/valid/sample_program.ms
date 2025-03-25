@@ -10,8 +10,8 @@ Var
     ASK THE PROF :
       - IF AFFECTATION OF A VARIABLE IN THE DECLARATION PART IS ALLOWED
   --}
-  <!- let testValue1: Int = +42; -!>
-  <!- let testValue2: Int = -15; -!>
+  let testValue1: Int = +42;
+  let testArray1: [Float; 3] = { -4.34, +23.23, 19};
 
 BeginPg
 {
