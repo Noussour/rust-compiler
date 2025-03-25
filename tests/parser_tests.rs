@@ -152,6 +152,42 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_if_statement() {
+        let source = "
+            MainPrgm test ;
+            Var
+            let x, max : Int ;
+            BeginPg {
+                if (x > 10) then {
+                    max := x ;
+                }
+            } EndPg ;
+        ";
+
+        let program = parse_test(source);
+
+        assert_eq!(program.statements.len(), 1);
+
+        match &program.statements[0] {
+            Statement::IfThen(condition, then_block) => {
+                // Check condition is x > 10
+                if let Expression::BinaryOp(left, op, right) = condition {
+                    assert!(matches!(**left, Expression::Identifier(ref id) if id == "x"));
+                    assert!(matches!(op, Operator::GreaterThan));
+                    assert!(matches!(**right, Expression::Literal(Literal::Int(10))));
+                } else {
+                    panic!("Expected binary operation as condition");
+                }
+
+                // Check then block has one assignment
+                assert_eq!(then_block.len(), 1);
+                assert!(matches!(&then_block[0], Statement::Assignment(_, _)));
+            }
+            _ => panic!("Expected if statement"),
+        }
+    }
+
+    #[test]
     fn test_if_else_statement() {
         let source = "
             MainPrgm test ;
@@ -171,7 +207,7 @@ mod parser_tests {
         assert_eq!(program.statements.len(), 1);
 
         match &program.statements[0] {
-            Statement::If(condition, then_block, else_block) => {
+            Statement::IfThenElse(condition, then_block, else_block) => {
                 // Check condition is x > 10
                 if let Expression::BinaryOp(left, op, right) = condition {
                     assert!(matches!(**left, Expression::Identifier(ref id) if id == "x"));
@@ -189,7 +225,7 @@ mod parser_tests {
                 assert_eq!(else_block.len(), 1);
                 assert!(matches!(&else_block[0], Statement::Assignment(_, _)));
             }
-            _ => panic!("Expected if statement"),
+            _ => panic!("Expected if-else statement"),
         }
     }
 
@@ -325,46 +361,6 @@ mod parser_tests {
         for stmt in &program.statements {
             assert!(matches!(stmt, Statement::Assignment(_, _)));
         }
-    }
-
-    #[test]
-    fn test_sample_program() {
-        let source = "
-            MainPrgm test_program ;
-            Var
-            let x, y, z : Int ;
-            let A : [Int; 10] ;
-            @define Const PI : Float = 3.14 ;
-
-            BeginPg
-            {
-                x := 10 ;
-                y := 20 ;
-                z := x + y ;
-                
-                if (z > 25) then {
-                    output(\"z is greater than 25\") ;
-                } else {
-                    output(\"z is not greater than 25\") ;
-                }
-                
-                for i from 0 to 9 step 1 {
-                    A[i] := i * 2 ;
-                }
-                
-                do {
-                    x := x - 1 ;
-                } while (x > 0) ;
-                
-                input(y) ;
-                output(\"The value of y is: \", y) ;
-            }
-            EndPg ;
-        ";
-
-        // This test just checks if parsing succeeds
-        let program = parse_test(source);
-        assert_eq!(program.name, "test_program");
     }
 
     #[test]

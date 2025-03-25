@@ -38,12 +38,6 @@ BeginPg
       if (temperatures[i] < -10.5) then {
         output("Warning: Temperature well below minimum value!");
         temperatures[i] := MIN_TEMP;
-      } else {
-        {--
-          ASK THE PROF:
-            - IF WE CAN IMPLEMENT IF ALONE WITHOUT ELSE
-        --}
-        <!- THE ELSE IS OBLIGATED IN THE PROJECT DOC -!>
       }
     }
     

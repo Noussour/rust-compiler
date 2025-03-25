@@ -113,8 +113,11 @@ Statement: Statement = {
     <target:LValue> ":=" <value:Expression> ";" => {
         Statement::Assignment(target, value)
     },
+    "if" "(" <cond:Expression> ")" "then" "{" <then_block:Statement*> "}" => {
+        Statement::IfThen(cond, then_block)
+    },
     "if" "(" <cond:Expression> ")" "then" "{" <then_block:Statement*> "}" "else" "{" <else_block:Statement*> "}" => {
-        Statement::If(cond, then_block, else_block)
+        Statement::IfThenElse(cond, then_block, else_block)
     },
     "do" "{" <body:Statement*> "}" "while" "(" <cond:Expression> ")" ";" => {
         Statement::DoWhile(body, cond)

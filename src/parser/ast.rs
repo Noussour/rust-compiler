@@ -34,7 +34,8 @@ impl std::fmt::Display for Type {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Assignment(Expression, Expression),
-    If(Expression, Vec<Statement>, Vec<Statement>),
+    IfThen(Expression, Vec<Statement>),
+    IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
     DoWhile(Vec<Statement>, Expression),
     For(String, Expression, Expression, Expression, Vec<Statement>),
     Input(String),
