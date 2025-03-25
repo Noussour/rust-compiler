@@ -38,7 +38,7 @@ pub enum Statement {
     IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
     DoWhile(Vec<Statement>, Expression),
     For(String, Expression, Expression, Expression, Vec<Statement>),
-    Input(String),
+    Input(Expression),
     Output(Vec<Expression>),
     Empty,
 }

@@ -28,7 +28,7 @@ BeginPg
       - IF PUTTING ARRAY ELEMENT INSIDE INPUT IS ALLOWED
     --}
     <!- output("Enter temperature reading #", i+1, ": "); -!>
-    <!- input(temperatures[i]); -!>
+    input(temperatures[i]);
     
     <!- Validate temperature range -!>
     if (temperatures[i] > MAX_TEMP) then {

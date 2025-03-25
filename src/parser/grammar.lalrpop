@@ -125,7 +125,7 @@ Statement: Statement = {
     "for" <var:Id> "from" <from:Expression> "to" <to:Expression> "step" <step:Expression> "{" <body:Statement*> "}" => {
         Statement::For(var, from, to, step, body)
     },
-    "input" "(" <var:Id> ")" ";" => {
+    "input" "(" <var:LValue> ")" ";" => {
         Statement::Input(var)
     },
     "output" "(" <exprs:ExprList> ")" ";" => {
