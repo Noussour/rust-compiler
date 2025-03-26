@@ -24,16 +24,6 @@ pub struct SemanticAnalyzer {
 }
 
 impl SemanticAnalyzer {
-    /// Creates a new semantic analyzer
-    pub fn new() -> Self {
-        SemanticAnalyzer {
-            symbol_table: SymbolTable::new(),
-            errors: Vec::new(),
-            positions: HashMap::new(),
-            current_expr_pos: None,
-        }
-    }
-
     /// Creates a new semantic analyzer with position information
     pub fn new_with_positions(positions: HashMap<String, (usize, usize)>) -> Self {
         SemanticAnalyzer {
@@ -68,14 +58,6 @@ impl SemanticAnalyzer {
     /// Clear the current expression position context
     fn clear_current_expr_pos(&mut self) {
         self.current_expr_pos = None;
-    }
-
-    /// Get the current expression position
-    fn get_current_expr_pos(&self) -> (usize, usize) {
-        self.current_expr_pos
-            .as_ref()
-            .map(|pos| (pos.line, pos.column))
-            .unwrap_or((1, 1))
     }
 
     /// Analyzes a program for semantic errors
@@ -840,9 +822,7 @@ impl SemanticAnalyzer {
             Expression::UnaryOp(op, expr) => {
                 // Check the type of the operand
                 let expr_type = self.analyze_expression(expr);
-                if expr_type.is_none() {
-                    return None;
-                }
+                expr_type.as_ref()?;
 
                 let expr_type = expr_type.unwrap();
 

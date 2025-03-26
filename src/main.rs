@@ -2,7 +2,6 @@ mod lexer;
 mod parser;
 mod semantics;
 
-use crate::lexer::lexer_core::TokenWithPosition;
 use crate::lexer::Lexer;
 use crate::parser::parse;
 use crate::semantics::SemanticAnalyzer;

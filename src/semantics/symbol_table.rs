@@ -58,18 +58,4 @@ impl SymbolTable {
     pub fn get_all(&self) -> Vec<&Symbol> {
         self.symbols.values().collect()
     }
-
-    /// Updates the value of an existing symbol
-    pub fn update_value(&mut self, name: &str, value: Literal) -> bool {
-        if let Some(symbol) = self.symbols.get_mut(name) {
-            // Check if symbol is a constant
-            if let SymbolKind::Constant = symbol.kind {
-                return false; // Can't modify a constant
-            }
-            symbol.value = Some(value);
-            true
-        } else {
-            false
-        }
-    }
 }
