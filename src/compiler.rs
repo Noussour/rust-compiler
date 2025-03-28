@@ -1,4 +1,4 @@
-use crate::error_reporter::{ErrorKind, ErrorReporter};
+use crate::error_reporter::ErrorReporter;
 use crate::lexer::{lexer_core::TokenWithPosition, token::Token, Lexer};
 use crate::parser::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
@@ -30,35 +30,96 @@ impl Compiler {
     pub fn run(&mut self) -> Result<(), i32> {
         println!("Compiling file: {}", self.file_path);
         self.print_source_code();
-        
+
+        // STEP 1: Lexical Analysis
         // Tokenize the source code and capture lexical errors
         let tokens = self.tokenize();
-        
+
         // Check for lexical errors
         let mut has_lexical_errors = false;
         for token in &tokens {
             if let Token::Error = &token.token {
-                self.error_reporter.add_error(
-                    ErrorKind::Lexical,
-                    &format!("Invalid token: '{}'", token.text),
+                self.error_reporter.add_lexical_error(
+                    &token.text,
                     token.position.line,
-                    token.position.column
+                    token.position.column,
                 );
                 has_lexical_errors = true;
             }
         }
-        
+
+        // If lexical errors, report and exit early
         if has_lexical_errors {
             println!("{}", "Lexical errors detected".red().bold());
+            self.error_reporter.report_errors();
             return Err(1);
         }
-        
+
         self.print_tokens(&tokens);
-        
-        // Parse and analyze, capture errors
-        let _ = self.parse_and_analyze(tokens);
-        
-        // Report any errors that were found
+
+        // STEP 2: Syntax Analysis
+        println!("\n{}", "Parsing:".bold().underline());
+
+        // Parse tokens into an AST
+        match parse(tokens) {
+            Ok(program) => {
+                println!("{}", "AST:".green());
+                println!("{:#?}", program);
+
+                // STEP 3: Semantic Analysis
+                println!("\n{}", "Semantic Analysis:".bold().underline());
+
+                // Build position map for better error reporting
+                let position_map = self.build_position_map(&program);
+
+                let mut analyzer = SemanticAnalyzer::new_with_positions(position_map);
+                analyzer.analyze(&program);
+
+                // Check for semantic errors
+                let semantic_errors = analyzer.get_errors();
+                if !semantic_errors.is_empty() {
+                    println!("{}", "Semantic Errors Detected".red().bold());
+                    for error in semantic_errors {
+                        self.error_reporter.add_semantic_error(error);
+                    }
+                } else {
+                    println!("{}", "No semantic errors found".green());
+
+                    // Display symbol table
+                    println!("\n{}", "Symbol Table:".bold().underline());
+                    let symbol_table = analyzer.get_symbol_table();
+                    for symbol in symbol_table.get_all() {
+                        let kind = match &symbol.kind {
+                            SymbolKind::Variable => "Variable".cyan(),
+                            SymbolKind::Constant => "Constant".yellow(),
+                            SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
+                        };
+
+                        let value = if let Some(val) = &symbol.value {
+                            format!("{:?}", val).green()
+                        } else {
+                            "<uninitialized>".dimmed()
+                        };
+
+                        println!(
+                            "{} {} {} = {} (line {}, col {})",
+                            kind,
+                            symbol.name.white().bold(),
+                            format!("({})", symbol.symbol_type).blue(),
+                            value,
+                            symbol.line,
+                            symbol.column
+                        );
+                    }
+                }
+            }
+            Err(parse_error) => {
+                println!("{}", "Parser Error:".red().bold());
+                self.error_reporter.add_parse_error(&parse_error);
+            }
+        }
+
+        // Final error reporting
         if self.error_reporter.has_errors() {
             self.error_reporter.report_errors();
             Err(1) // Return error code
@@ -100,91 +161,64 @@ impl Compiler {
         }
     }
 
-    fn parse_and_analyze(&mut self, tokens: Vec<TokenWithPosition>) -> Result<(), ()> {
-        // Build a position map for identifiers and other tokens of interest
+    fn build_position_map(
+        &self,
+        program: &crate::parser::ast::Program,
+    ) -> HashMap<String, (usize, usize)> {
         let mut position_map = HashMap::new();
-        for token in &tokens {
-            match &token.token {
-                Token::Identifier(name) => {
-                    position_map.insert(name.clone(), (token.position.line, token.position.column));
-                },
-                Token::IntLiteral(val) => {
-                    // Track positions of literals for potential division by zero errors
-                    if *val == 0 {
-                        let key = format!("int_literal_{}", val);
-                        position_map.insert(key, (token.position.line, token.position.column));
-                    }
-                },
-                Token::FloatLiteral(val) => {
-                    if *val == 0.0 {
-                        let key = format!("float_literal_{}", val);
-                        position_map.insert(key, (token.position.line, token.position.column));
-                    }
-                },
-                _ => {}
-            }
+
+        // Add program name position if available
+        if let Some(line_col) = self.find_identifier_position(&program.name) {
+            position_map.insert(program.name.clone(), line_col);
         }
 
-        // Try parsing the tokens and print the result
-        println!("\n{}", "Parsing:".bold().underline());
-        match parse(tokens) {
-            Ok(program) => {
-                println!("{}", "AST:".green());
-                println!("{:#?}", program);
-
-                // Semantic analysis
-                println!("\n{}", "Semantic Analysis:".bold().underline());
-                let mut analyzer = SemanticAnalyzer::new_with_positions(position_map);
-                analyzer.analyze(&program);
-
-                // Check for semantic errors
-                let errors = analyzer.get_errors();
-                if !errors.is_empty() {
-                    println!("{}", "Semantic Errors Detected".red().bold());
-                    for error in errors {
-                        // Add each semantic error to our error reporter
-                        self.error_reporter.add_semantic_error(error);
+        // Process declarations to get positions of all variables
+        for decl in &program.declarations {
+            match decl {
+                crate::parser::ast::Declaration::Variable(names, _)
+                | crate::parser::ast::Declaration::Array(names, _, _)
+                | crate::parser::ast::Declaration::VariableWithInit(names, _, _)
+                | crate::parser::ast::Declaration::ArrayWithInit(names, _, _, _) => {
+                    for name in names {
+                        if let Some(line_col) = self.find_identifier_position(name) {
+                            position_map.insert(name.clone(), line_col);
+                        }
                     }
-                    return Err(());
-                } else {
-                    println!("{}", "No semantic errors found".green());
-
-                    // Display symbol table
-                    println!("\n{}", "Symbol Table:".bold().underline());
-                    let symbol_table = analyzer.get_symbol_table();
-                    for symbol in symbol_table.get_all() {
-                        let kind = match &symbol.kind {
-                            SymbolKind::Variable => "Variable".cyan(),
-                            SymbolKind::Constant => "Constant".yellow(),
-                            SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
-                        };
-
-                        let value = if let Some(val) = &symbol.value {
-                            format!("{:?}", val).green()
-                        } else {
-                            "<uninitialized>".dimmed()
-                        };
-
-                        println!(
-                            "{} {} {} = {} (line {}, col {})",
-                            kind,
-                            symbol.name.white().bold(),
-                            format!("({})", symbol.symbol_type).blue(),
-                            value,
-                            symbol.line,
-                            symbol.column
-                        );
+                }
+                crate::parser::ast::Declaration::Constant(name, _, _) => {
+                    if let Some(line_col) = self.find_identifier_position(name) {
+                        position_map.insert(name.clone(), line_col);
                     }
-                    
-                    Ok(())
                 }
             }
-            Err(err) => {
-                println!("{}", "Parser Error:".red().bold());
-                // Add the parse error to our error reporter
-                self.error_reporter.add_parse_error(&err);
-                Err(())
+        }
+
+        position_map
+    }
+
+    fn find_identifier_position(&self, name: &str) -> Option<(usize, usize)> {
+        // Simple search for identifier in source
+        let lines: Vec<&str> = self.source_code.lines().collect();
+
+        for (line_idx, line) in lines.iter().enumerate() {
+            if let Some(col_idx) = line.find(name) {
+                // Verify this is a proper identifier boundary
+                let is_valid_start = col_idx == 0
+                    || !line
+                        .chars()
+                        .nth(col_idx - 1)
+                        .unwrap_or(' ')
+                        .is_alphanumeric();
+                let end_idx = col_idx + name.len();
+                let is_valid_end = end_idx >= line.len()
+                    || !line.chars().nth(end_idx).unwrap_or(' ').is_alphanumeric();
+
+                if is_valid_start && is_valid_end {
+                    return Some((line_idx + 1, col_idx + 1)); // 1-based indexing
+                }
             }
         }
+
+        None
     }
 }

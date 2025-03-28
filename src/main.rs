@@ -20,13 +20,13 @@ fn main() {
             // Run the compiler and process the result
             match compiler.run() {
                 Ok(_) => {
-                    // The compiler already prints "Compilation successful" on success
+                    println!("{}", "✓ Compilation successful!".green().bold());
                     process::exit(0);
-                },
+                }
                 Err(exit_code) => {
-                    // The error reporter already displays the detailed errors
+                    eprintln!("{}", "✗ Compilation failed".red().bold());
                     process::exit(exit_code);
-                },
+                }
             }
         }
         Err(error) => {
