@@ -167,9 +167,11 @@ impl Compiler {
     ) -> HashMap<String, (usize, usize)> {
         let mut position_map = HashMap::new();
 
-        // Don't add the program name to reduce false positives at beginning of file
-        // This helps eliminate the erroneous error messages pointing to line 1
-        
+        // Add program name position if available
+        if let Some(line_col) = self.find_identifier_position(&program.name) {
+            position_map.insert(program.name.clone(), line_col);
+        }
+
         // Process declarations to get positions of all variables
         for decl in &program.declarations {
             match decl {
@@ -191,9 +193,9 @@ impl Compiler {
             }
         }
 
-        // Process statements to find for loop variables and other identifiers
+        // Also collect positions from statements to improve error reporting
         self.collect_statement_positions(&program.statements, &mut position_map);
-        
+
         position_map
     }
 
@@ -224,8 +226,8 @@ impl Compiler {
                     self.collect_expr_positions(condition, position_map);
                 }
                 crate::parser::ast::Statement::For(var, from, to, step, body) => {
-                    // Special handling for loop variables - find the actual position
-                    if let Some(line_col) = self.find_precise_identifier_position(var) {
+                    // Add position for the loop variable
+                    if let Some(line_col) = self.find_identifier_position(var) {
                         position_map.insert(var.clone(), line_col);
                     }
                     self.collect_expr_positions(from, position_map);
@@ -317,49 +319,6 @@ impl Compiler {
             }
         }
 
-        None
-    }
-
-    // Improved identifier position finder with more precise identification
-    fn find_precise_identifier_position(&self, name: &str) -> Option<(usize, usize)> {
-        let lines: Vec<&str> = self.source_code.lines().collect();
-        
-        for (line_idx, line) in lines.iter().enumerate() {
-            // Look for loop variables or other specific forms
-            if let Some(pos) = line.find(&format!("for {} from", name)) {
-                return Some((line_idx + 1, pos + 4)); // Position after 'for '
-            }
-            
-            // Standard identifier search
-            let mut search_pos = 0;
-            while let Some(col_idx) = line[search_pos..].find(name) {
-                let actual_col_idx = search_pos + col_idx;
-
-                // Verify this is a proper identifier boundary
-                let is_valid_start = actual_col_idx == 0
-                    || !line
-                        .chars()
-                        .nth(actual_col_idx - 1)
-                        .unwrap_or(' ')
-                        .is_alphanumeric();
-                let end_idx = actual_col_idx + name.len();
-                let is_valid_end = end_idx >= line.len()
-                    || !line.chars().nth(end_idx).unwrap_or(' ').is_alphanumeric();
-
-                if is_valid_start && is_valid_end {
-                    return Some((line_idx + 1, actual_col_idx + 1)); // 1-based indexing
-                }
-
-                // Move past this occurrence
-                search_pos = actual_col_idx + 1;
-
-                // Safety check
-                if search_pos >= line.len() {
-                    break;
-                }
-            }
-        }
-        
         None
     }
 }
