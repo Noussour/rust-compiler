@@ -167,11 +167,9 @@ impl Compiler {
     ) -> HashMap<String, (usize, usize)> {
         let mut position_map = HashMap::new();
 
-        // Add program name position if available
-        if let Some(line_col) = self.find_identifier_position(&program.name) {
-            position_map.insert(program.name.clone(), line_col);
-        }
-
+        // Don't add the program name to reduce false positives at beginning of file
+        // This helps eliminate the erroneous error messages pointing to line 1
+        
         // Process declarations to get positions of all variables
         for decl in &program.declarations {
             match decl {
@@ -193,32 +191,175 @@ impl Compiler {
             }
         }
 
+        // Process statements to find for loop variables and other identifiers
+        self.collect_statement_positions(&program.statements, &mut position_map);
+        
         position_map
     }
 
+    fn collect_statement_positions(
+        &self,
+        statements: &[crate::parser::ast::Statement],
+        position_map: &mut HashMap<String, (usize, usize)>,
+    ) {
+        for statement in statements {
+            match statement {
+                crate::parser::ast::Statement::Assignment(target, expr) => {
+                    // Collect identifiers from the target
+                    self.collect_expr_positions(target, position_map);
+                    // Collect identifiers from the expression
+                    self.collect_expr_positions(expr, position_map);
+                }
+                crate::parser::ast::Statement::IfThen(condition, then_block) => {
+                    self.collect_expr_positions(condition, position_map);
+                    self.collect_statement_positions(then_block, position_map);
+                }
+                crate::parser::ast::Statement::IfThenElse(condition, then_block, else_block) => {
+                    self.collect_expr_positions(condition, position_map);
+                    self.collect_statement_positions(then_block, position_map);
+                    self.collect_statement_positions(else_block, position_map);
+                }
+                crate::parser::ast::Statement::DoWhile(body, condition) => {
+                    self.collect_statement_positions(body, position_map);
+                    self.collect_expr_positions(condition, position_map);
+                }
+                crate::parser::ast::Statement::For(var, from, to, step, body) => {
+                    // Special handling for loop variables - find the actual position
+                    if let Some(line_col) = self.find_precise_identifier_position(var) {
+                        position_map.insert(var.clone(), line_col);
+                    }
+                    self.collect_expr_positions(from, position_map);
+                    self.collect_expr_positions(to, position_map);
+                    self.collect_expr_positions(step, position_map);
+                    self.collect_statement_positions(body, position_map);
+                }
+                crate::parser::ast::Statement::Input(var) => {
+                    self.collect_expr_positions(var, position_map);
+                }
+                crate::parser::ast::Statement::Output(exprs) => {
+                    for expr in exprs {
+                        self.collect_expr_positions(expr, position_map);
+                    }
+                }
+                crate::parser::ast::Statement::Empty => {}
+            }
+        }
+    }
+
+    fn collect_expr_positions(
+        &self,
+        expr: &crate::parser::ast::Expression,
+        position_map: &mut HashMap<String, (usize, usize)>,
+    ) {
+        match expr {
+            crate::parser::ast::Expression::Identifier(name) => {
+                if let Some(line_col) = self.find_identifier_position(name) {
+                    position_map.insert(name.clone(), line_col);
+                }
+            }
+            crate::parser::ast::Expression::ArrayAccess(name, index) => {
+                if let Some(line_col) = self.find_identifier_position(name) {
+                    position_map.insert(name.clone(), line_col);
+
+                    // Also track array_name[] as a separate key
+                    let array_access_key = format!("{}_access", name);
+                    position_map.insert(array_access_key, line_col);
+                }
+                self.collect_expr_positions(index, position_map);
+            }
+            crate::parser::ast::Expression::BinaryOp(left, _, right) => {
+                self.collect_expr_positions(left, position_map);
+                self.collect_expr_positions(right, position_map);
+            }
+            crate::parser::ast::Expression::UnaryOp(_, operand) => {
+                self.collect_expr_positions(operand, position_map);
+            }
+            crate::parser::ast::Expression::Literal(_) => {
+                // No identifiers to track in literals
+            }
+        }
+    }
+
+    // Improved identifier position finder with more context
     fn find_identifier_position(&self, name: &str) -> Option<(usize, usize)> {
         // Simple search for identifier in source
         let lines: Vec<&str> = self.source_code.lines().collect();
 
         for (line_idx, line) in lines.iter().enumerate() {
-            if let Some(col_idx) = line.find(name) {
+            let mut search_pos = 0;
+
+            // Look for all occurrences of the name in this line
+            while let Some(col_idx) = line[search_pos..].find(name) {
+                let actual_col_idx = search_pos + col_idx;
+
                 // Verify this is a proper identifier boundary
-                let is_valid_start = col_idx == 0
+                let is_valid_start = actual_col_idx == 0
                     || !line
                         .chars()
-                        .nth(col_idx - 1)
+                        .nth(actual_col_idx - 1)
                         .unwrap_or(' ')
                         .is_alphanumeric();
-                let end_idx = col_idx + name.len();
+                let end_idx = actual_col_idx + name.len();
                 let is_valid_end = end_idx >= line.len()
                     || !line.chars().nth(end_idx).unwrap_or(' ').is_alphanumeric();
 
                 if is_valid_start && is_valid_end {
-                    return Some((line_idx + 1, col_idx + 1)); // 1-based indexing
+                    return Some((line_idx + 1, actual_col_idx + 1)); // 1-based indexing
+                }
+
+                // Move past this occurrence
+                search_pos = actual_col_idx + 1;
+
+                // Safety check
+                if search_pos >= line.len() {
+                    break;
                 }
             }
         }
 
+        None
+    }
+
+    // Improved identifier position finder with more precise identification
+    fn find_precise_identifier_position(&self, name: &str) -> Option<(usize, usize)> {
+        let lines: Vec<&str> = self.source_code.lines().collect();
+        
+        for (line_idx, line) in lines.iter().enumerate() {
+            // Look for loop variables or other specific forms
+            if let Some(pos) = line.find(&format!("for {} from", name)) {
+                return Some((line_idx + 1, pos + 4)); // Position after 'for '
+            }
+            
+            // Standard identifier search
+            let mut search_pos = 0;
+            while let Some(col_idx) = line[search_pos..].find(name) {
+                let actual_col_idx = search_pos + col_idx;
+
+                // Verify this is a proper identifier boundary
+                let is_valid_start = actual_col_idx == 0
+                    || !line
+                        .chars()
+                        .nth(actual_col_idx - 1)
+                        .unwrap_or(' ')
+                        .is_alphanumeric();
+                let end_idx = actual_col_idx + name.len();
+                let is_valid_end = end_idx >= line.len()
+                    || !line.chars().nth(end_idx).unwrap_or(' ').is_alphanumeric();
+
+                if is_valid_start && is_valid_end {
+                    return Some((line_idx + 1, actual_col_idx + 1)); // 1-based indexing
+                }
+
+                // Move past this occurrence
+                search_pos = actual_col_idx + 1;
+
+                // Safety check
+                if search_pos >= line.len() {
+                    break;
+                }
+            }
+        }
+        
         None
     }
 }
