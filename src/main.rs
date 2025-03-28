@@ -1,3 +1,4 @@
+use colored::*;
 use rust_compiler::compiler::Compiler;
 use std::env;
 use std::process;
@@ -8,19 +9,28 @@ fn main() {
 
     // Check if a file path was provided
     if args.len() <= 1 {
-        eprintln!("Usage: {} <file_path>", args[0]);
+        eprintln!("{}: Usage: {} <file_path>", "Error".red().bold(), args[0]);
         process::exit(1);
     }
 
     // Create a compiler instance with the provided file path
     let file_path = &args[1];
     match Compiler::new(file_path) {
-        Ok(compiler) => {
-            // Run the compiler
-            compiler.run();
+        Ok(mut compiler) => {
+            // Run the compiler and process the result
+            match compiler.run() {
+                Ok(_) => {
+                    // The compiler already prints "Compilation successful" on success
+                    process::exit(0);
+                },
+                Err(exit_code) => {
+                    // The error reporter already displays the detailed errors
+                    process::exit(exit_code);
+                },
+            }
         }
         Err(error) => {
-            eprintln!("{}", error);
+            eprintln!("{}: {}", "Error".red().bold(), error);
             process::exit(1);
         }
     }

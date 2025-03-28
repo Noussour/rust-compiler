@@ -1,3 +1,4 @@
+use crate::error_reporter::{ErrorKind, ErrorReporter};
 use crate::lexer::{lexer_core::TokenWithPosition, token::Token, Lexer};
 use crate::parser::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
@@ -8,25 +9,63 @@ use std::fs;
 pub struct Compiler {
     source_code: String,
     file_path: String,
+    error_reporter: ErrorReporter,
 }
 
 impl Compiler {
     pub fn new(file_path: &str) -> Result<Self, String> {
         match fs::read_to_string(file_path) {
-            Ok(content) => Ok(Self {
-                source_code: content,
-                file_path: file_path.to_string(),
-            }),
+            Ok(content) => {
+                let error_reporter = ErrorReporter::new(&content, file_path);
+                Ok(Self {
+                    source_code: content,
+                    file_path: file_path.to_string(),
+                    error_reporter,
+                })
+            }
             Err(e) => Err(format!("Error reading file '{}': {}", file_path, e)),
         }
     }
 
-    pub fn run(&self) {
+    pub fn run(&mut self) -> Result<(), i32> {
         println!("Compiling file: {}", self.file_path);
         self.print_source_code();
+        
+        // Tokenize the source code and capture lexical errors
         let tokens = self.tokenize();
+        
+        // Check for lexical errors
+        let mut has_lexical_errors = false;
+        for token in &tokens {
+            if let Token::Error = &token.token {
+                self.error_reporter.add_error(
+                    ErrorKind::Lexical,
+                    &format!("Invalid token: '{}'", token.text),
+                    token.position.line,
+                    token.position.column
+                );
+                has_lexical_errors = true;
+            }
+        }
+        
+        if has_lexical_errors {
+            println!("{}", "Lexical errors detected".red().bold());
+            return Err(1);
+        }
+        
         self.print_tokens(&tokens);
-        self.parse_and_analyze(tokens);
+        
+        // Parse and analyze, capture errors
+        let _ = self.parse_and_analyze(tokens);
+        
+        // Report any errors that were found
+        if self.error_reporter.has_errors() {
+            self.error_reporter.report_errors();
+            Err(1) // Return error code
+        } else {
+            println!("{}", "Compilation successful!".green().bold());
+            Ok(()) // Successful compilation
+        }
     }
 
     fn print_source_code(&self) {
@@ -61,12 +100,28 @@ impl Compiler {
         }
     }
 
-    fn parse_and_analyze(&self, tokens: Vec<TokenWithPosition>) {
-        // Build a position map for identifiers
+    fn parse_and_analyze(&mut self, tokens: Vec<TokenWithPosition>) -> Result<(), ()> {
+        // Build a position map for identifiers and other tokens of interest
         let mut position_map = HashMap::new();
         for token in &tokens {
-            if let Token::Identifier(name) = &token.token {
-                position_map.insert(name.clone(), (token.position.line, token.position.column));
+            match &token.token {
+                Token::Identifier(name) => {
+                    position_map.insert(name.clone(), (token.position.line, token.position.column));
+                },
+                Token::IntLiteral(val) => {
+                    // Track positions of literals for potential division by zero errors
+                    if *val == 0 {
+                        let key = format!("int_literal_{}", val);
+                        position_map.insert(key, (token.position.line, token.position.column));
+                    }
+                },
+                Token::FloatLiteral(val) => {
+                    if *val == 0.0 {
+                        let key = format!("float_literal_{}", val);
+                        position_map.insert(key, (token.position.line, token.position.column));
+                    }
+                },
+                _ => {}
             }
         }
 
@@ -85,10 +140,12 @@ impl Compiler {
                 // Check for semantic errors
                 let errors = analyzer.get_errors();
                 if !errors.is_empty() {
-                    println!("{}", "Semantic Errors:".red());
+                    println!("{}", "Semantic Errors Detected".red().bold());
                     for error in errors {
-                        println!("- {}", error);
+                        // Add each semantic error to our error reporter
+                        self.error_reporter.add_semantic_error(error);
                     }
+                    return Err(());
                 } else {
                     println!("{}", "No semantic errors found".green());
 
@@ -118,11 +175,15 @@ impl Compiler {
                             symbol.column
                         );
                     }
+                    
+                    Ok(())
                 }
             }
             Err(err) => {
-                println!("{}", "Parser Error:".red());
-                println!("{}", err);
+                println!("{}", "Parser Error:".red().bold());
+                // Add the parse error to our error reporter
+                self.error_reporter.add_parse_error(&err);
+                Err(())
             }
         }
     }
