@@ -1,9 +1,4 @@
-mod lexer;
-mod parser;
-mod semantics;
-mod compiler;
-
-use crate::compiler::Compiler;
+use rust_compiler::compiler::Compiler;
 use std::env;
 use std::process;
 
