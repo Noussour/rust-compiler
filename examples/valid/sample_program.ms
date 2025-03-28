@@ -6,17 +6,15 @@ Var
   @define Const MAX_TEMP: Float = (+100.0);
   @define Const MIN_TEMP: Float = (-0.0);
   @define Const DEFAULT_TEMP: Float = 25.5;
-  {--
-    ASK THE PROF :
-      - IF AFFECTATION OF A VARIABLE IN THE DECLARATION PART IS ALLOWED
-  --}
   let testValue1: Int = (+42);
   let testArray1: [Float; 3] = { (-4.34), (+23.23), 19};
 
 BeginPg
 {
-  {-- This is a sample program that calculates the average
-     of a series of temperature readings --}
+  {--
+    This is a sample program that calculates the average
+    of a series of temperature readings
+  --}
   
   sum := 0;
   
@@ -53,7 +51,7 @@ BeginPg
   output("Average temperature: ", average);
   
   <!- Check if average is within safe range -!>
-  if ((average >= (+50.0)) AND (average <= (+75.0))) then {
+  if ((average >= 50.0) AND (average <= (+75.0))) then {
     output("Average temperature is within safe operating range.");
   } else {
     output("Warning: Average temperature is outside safe operating range!");
