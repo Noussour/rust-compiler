@@ -1,4 +1,4 @@
-use crate::lexer::{Lexer, token::Token, lexer_core::TokenWithPosition};
+use crate::lexer::{lexer_core::TokenWithPosition, token::Token, Lexer};
 use crate::parser::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
 use colored::*;

@@ -7,7 +7,12 @@ Var
   @define Const MIN_TEMP: Float = (-0.0);
   @define Const DEFAULT_TEMP: Float = 25.5;
   let testValue1: Int = (+42);
+  {-- 
+    ASK PROF:
+      - If an int is assigned to a float, should it be casted?
+  --}
   let testArray1: [Float; 3] = { (-4.34), (+23.23), 19};
+  let result: Int = 0;
 
 BeginPg
 {
@@ -56,5 +61,8 @@ BeginPg
   } else {
     output("Warning: Average temperature is outside safe operating range!");
   }
+
+  <!- Test operations priority -!>
+  result := (testValue1 + testArray1[0]) * testArray1[1] / testArray1[2];
 }
 EndPg;

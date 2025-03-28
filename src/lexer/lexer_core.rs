@@ -55,7 +55,7 @@ impl<'a> Lexer<'a> {
             Err(idx) => idx - 1,
         };
 
-        let line = line_idx + 2;
+        let line = line_idx + 1;
         let column = offset - self.line_starts[line_idx] + 1;
 
         Position { line, column }
