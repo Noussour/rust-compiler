@@ -3,7 +3,7 @@ use crate::parser::ast::{
 };
 use crate::semantics::error::SemanticError;
 use crate::semantics::symbol_table::{Symbol, SymbolKind, SymbolTable};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 // Enhanced position tracking for expressions
 #[derive(Debug, Clone, PartialEq)]
@@ -25,6 +25,8 @@ pub struct SemanticAnalyzer {
     expression_positions: HashMap<String, (usize, usize)>,
     // Keep track of division by zero literals for better error reporting
     zero_literals: Vec<(usize, usize)>,
+    // Keep track of reported error keys to avoid duplicates
+    reported_errors: HashSet<String>,
 }
 
 impl SemanticAnalyzer {
@@ -37,6 +39,7 @@ impl SemanticAnalyzer {
             current_expr_pos: None,
             expression_positions: HashMap::new(),
             zero_literals: Vec::new(),
+            reported_errors: HashSet::new(),
         }
     }
 
@@ -46,7 +49,7 @@ impl SemanticAnalyzer {
         if let Some(pos) = self.positions.get(name) {
             return *pos;
         }
-        
+
         // Try the expression positions map (for computed expressions)
         if let Some(pos) = self.expression_positions.get(name) {
             return *pos;
@@ -65,7 +68,7 @@ impl SemanticAnalyzer {
     fn set_current_expr_pos(&mut self, line: usize, column: usize) {
         self.current_expr_pos = Some(ExpressionPosition { line, column });
     }
-    
+
     /// Track a position for a specific expression key
     fn track_expression_pos(&mut self, key: String, line: usize, column: usize) {
         self.expression_positions.insert(key, (line, column));
@@ -90,7 +93,7 @@ impl SemanticAnalyzer {
 
         // Clear any accumulated positions to start fresh for statements
         self.clear_current_expr_pos();
-        
+
         // Process all statements
         for statement in &program.statements {
             self.analyze_statement(statement);
@@ -333,6 +336,61 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// Checks if two types are compatible for operations
+    fn are_types_compatible(&self, type1: &Type, type2: &Type) -> bool {
+        // Same types are always compatible
+        if type1 == type2 {
+            return true;
+        }
+
+        // For numeric operations, Int and Float can work together
+        matches!(
+            (type1, type2),
+            (Type::Int, Type::Float) | (Type::Float, Type::Int)
+        )
+    }
+
+    /// Determines the resulting type when operating on two types
+    fn resulting_type(&self, type1: &Type, type2: &Type) -> Type {
+        if type1 == type2 {
+            return type1.clone();
+        }
+
+        // If either type is Float, the result is Float
+        if *type1 == Type::Float || *type2 == Type::Float {
+            return Type::Float;
+        }
+
+        // Default to the first type
+        type1.clone()
+    }
+
+    /// Adds an error if it hasn't been reported yet
+    fn add_error(&mut self, error: SemanticError) {
+        // Create a unique key for this error to avoid duplicates
+        let error_key = match &error {
+            SemanticError::TypeMismatch {
+                expected,
+                found,
+                line,
+                column,
+            } => {
+                format!("type_mismatch:{}:{}:{}:{}", expected, found, line, column)
+            }
+            SemanticError::UndeclaredIdentifier { name, line, column } => {
+                format!("undeclared:{}:{}:{}", name, line, column)
+            }
+            // Add other error types as needed
+            _ => format!("{:?}", error),
+        };
+
+        // Only add the error if we haven't reported it yet
+        if !self.reported_errors.contains(&error_key) {
+            self.errors.push(error);
+            self.reported_errors.insert(error_key);
+        }
+    }
+
     /// Analyzes a statement
     fn analyze_statement(&mut self, statement: &Statement) {
         match statement {
@@ -343,7 +401,7 @@ impl SemanticAnalyzer {
                         // Check if the identifier exists
                         if !self.symbol_table.contains(name) {
                             let (line, column) = self.get_position(name);
-                            self.errors.push(SemanticError::UndeclaredIdentifier {
+                            self.add_error(SemanticError::UndeclaredIdentifier {
                                 name: name.clone(),
                                 line,
                                 column,
@@ -355,7 +413,7 @@ impl SemanticAnalyzer {
                         let symbol = self.symbol_table.get(name).unwrap();
                         if let SymbolKind::Constant = symbol.kind {
                             let (line, column) = self.get_position(name);
-                            self.errors.push(SemanticError::ConstantModification {
+                            self.add_error(SemanticError::ConstantModification {
                                 name: name.clone(),
                                 line,
                                 column,
@@ -366,7 +424,7 @@ impl SemanticAnalyzer {
                         // Get the type and position of the identifier
                         let lhs_type = symbol.symbol_type.clone();
                         let (line, column) = (symbol.line, symbol.column);
-                        
+
                         // Store the position for later reference
                         let expr_key = format!("assign_{}", name);
                         self.track_expression_pos(expr_key, line, column);
@@ -374,8 +432,14 @@ impl SemanticAnalyzer {
                         // Check if the right-hand side expression matches the type
                         let rhs_type = self.analyze_expression(rhs);
                         if let Some(rhs_type) = rhs_type {
-                            if rhs_type != lhs_type {
-                                self.errors.push(SemanticError::TypeMismatch {
+                            // Allow automatic conversion from Float to Int for assignment
+                            if rhs_type == Type::Float && lhs_type == Type::Int {
+                                // This is a valid implicit conversion (with potential data loss)
+                                // Could add a warning here if desired
+                            }
+                            // For other type mismatches, report an error
+                            else if rhs_type != lhs_type {
+                                self.add_error(SemanticError::TypeMismatch {
                                     expected: format!("{}", lhs_type),
                                     found: format!("{}", rhs_type),
                                     line,
@@ -389,10 +453,10 @@ impl SemanticAnalyzer {
                         let (line, column) = self.get_position(name);
                         let expr_key = format!("array_access_{}", name);
                         self.track_expression_pos(expr_key, line, column);
-                        
+
                         // Check if the array exists
                         if !self.symbol_table.contains(name) {
-                            self.errors.push(SemanticError::UndeclaredIdentifier {
+                            self.add_error(SemanticError::UndeclaredIdentifier {
                                 name: name.clone(),
                                 line,
                                 column,
@@ -412,7 +476,7 @@ impl SemanticAnalyzer {
                                 // Check if the index is a constant and within bounds
                                 if let Expression::Literal(Literal::Int(idx)) = &**index_expr {
                                     if *idx < 0 || *idx as usize >= array_size {
-                                        self.errors.push(SemanticError::ArrayIndexOutOfBounds {
+                                        self.add_error(SemanticError::ArrayIndexOutOfBounds {
                                             name: name.clone(),
                                             index: *idx as usize,
                                             size: array_size,
@@ -428,13 +492,14 @@ impl SemanticAnalyzer {
                                 if let Some(idx_type) = idx_type {
                                     if idx_type != Type::Int {
                                         // Use the position of the index expression
-                                        let (idx_line, idx_col) = if let Some(pos) = &self.current_expr_pos {
-                                            (pos.line, pos.column)
-                                        } else {
-                                            (line, column + name.len() + 1) // Estimate index position
-                                        };
-                                        
-                                        self.errors.push(SemanticError::TypeMismatch {
+                                        let (idx_line, idx_col) =
+                                            if let Some(pos) = &self.current_expr_pos {
+                                                (pos.line, pos.column)
+                                            } else {
+                                                (line, column + name.len() + 1) // Estimate index position
+                                            };
+
+                                        self.add_error(SemanticError::TypeMismatch {
                                             expected: "Int".to_string(),
                                             found: format!("{}", idx_type),
                                             line: idx_line,
@@ -448,7 +513,7 @@ impl SemanticAnalyzer {
                                 let rhs_type = self.analyze_expression(rhs);
                                 if let Some(rhs_type) = rhs_type {
                                     if rhs_type != element_type {
-                                        self.errors.push(SemanticError::TypeMismatch {
+                                        self.add_error(SemanticError::TypeMismatch {
                                             expected: format!("{}", element_type),
                                             found: format!("{}", rhs_type),
                                             line: array_line,
@@ -458,7 +523,7 @@ impl SemanticAnalyzer {
                                 }
                             }
                             _ => {
-                                self.errors.push(SemanticError::Other(format!(
+                                self.add_error(SemanticError::Other(format!(
                                     "Cannot index non-array variable '{}'",
                                     name
                                 )));
@@ -466,7 +531,7 @@ impl SemanticAnalyzer {
                         }
                     }
                     _ => {
-                        self.errors.push(SemanticError::Other(
+                        self.add_error(SemanticError::Other(
                             "Invalid assignment target".to_string(),
                         ));
                     }
@@ -507,10 +572,10 @@ impl SemanticAnalyzer {
             Statement::For(var, from, to, step, body) => {
                 // Get position of the loop variable
                 let (var_line, var_col) = self.get_position(var);
-                
+
                 // Check if the loop variable exists
                 if !self.symbol_table.contains(var) {
-                    self.errors.push(SemanticError::UndeclaredIdentifier {
+                    self.add_error(SemanticError::UndeclaredIdentifier {
                         name: var.clone(),
                         line: var_line,
                         column: var_col,
@@ -519,7 +584,7 @@ impl SemanticAnalyzer {
                     // Check if the loop variable is an integer
                     let symbol = self.symbol_table.get(var).unwrap();
                     if symbol.symbol_type != Type::Int {
-                        self.errors.push(SemanticError::TypeMismatch {
+                        self.add_error(SemanticError::TypeMismatch {
                             expected: "Int".to_string(),
                             found: format!("{}", symbol.symbol_type),
                             line: var_line,
@@ -530,7 +595,7 @@ impl SemanticAnalyzer {
 
                 // Store current position for better error reporting
                 self.set_current_expr_pos(var_line, var_col);
-                
+
                 // Check that from, to, and step are all numeric expressions
                 let from_type = self.analyze_expression(from);
                 if let Some(from_type) = from_type {
@@ -541,8 +606,8 @@ impl SemanticAnalyzer {
                         } else {
                             (var_line, var_col)
                         };
-                        
-                        self.errors.push(SemanticError::TypeMismatch {
+
+                        self.add_error(SemanticError::TypeMismatch {
                             expected: "Int".to_string(),
                             found: format!("{}", from_type),
                             line: from_line,
@@ -560,8 +625,8 @@ impl SemanticAnalyzer {
                         } else {
                             (var_line, var_col)
                         };
-                        
-                        self.errors.push(SemanticError::TypeMismatch {
+
+                        self.add_error(SemanticError::TypeMismatch {
                             expected: "Int".to_string(),
                             found: format!("{}", to_type),
                             line: to_line,
@@ -579,8 +644,8 @@ impl SemanticAnalyzer {
                         } else {
                             (var_line, var_col)
                         };
-                        
-                        self.errors.push(SemanticError::TypeMismatch {
+
+                        self.add_error(SemanticError::TypeMismatch {
                             expected: "Int".to_string(),
                             found: format!("{}", step_type),
                             line: step_line,
@@ -597,8 +662,8 @@ impl SemanticAnalyzer {
                     } else {
                         (var_line, var_col)
                     };
-                    
-                    self.errors.push(SemanticError::DivisionByZero {
+
+                    self.add_error(SemanticError::DivisionByZero {
                         line: step_line,
                         column: step_col,
                     });
@@ -616,7 +681,7 @@ impl SemanticAnalyzer {
                     Expression::Identifier(name) => {
                         if !self.symbol_table.contains(name) {
                             let (line, column) = self.get_position(name);
-                            self.errors.push(SemanticError::UndeclaredIdentifier {
+                            self.add_error(SemanticError::UndeclaredIdentifier {
                                 name: name.clone(),
                                 line,
                                 column,
@@ -628,7 +693,7 @@ impl SemanticAnalyzer {
                         let symbol = self.symbol_table.get(name).unwrap();
                         if let SymbolKind::Constant = symbol.kind {
                             let (line, column) = self.get_position(name);
-                            self.errors.push(SemanticError::ConstantModification {
+                            self.add_error(SemanticError::ConstantModification {
                                 name: name.clone(),
                                 line,
                                 column,
@@ -639,7 +704,7 @@ impl SemanticAnalyzer {
                         // Check if the array exists
                         if !self.symbol_table.contains(name) {
                             let (line, column) = self.get_position(name);
-                            self.errors.push(SemanticError::UndeclaredIdentifier {
+                            self.add_error(SemanticError::UndeclaredIdentifier {
                                 name: name.clone(),
                                 line,
                                 column,
@@ -655,7 +720,7 @@ impl SemanticAnalyzer {
                                 if let Expression::Literal(Literal::Int(idx)) = &**index_expr {
                                     if *idx < 0 || *idx as usize >= *size {
                                         let (line, column) = self.get_position(name);
-                                        self.errors.push(SemanticError::ArrayIndexOutOfBounds {
+                                        self.add_error(SemanticError::ArrayIndexOutOfBounds {
                                             name: name.clone(),
                                             index: *idx as usize,
                                             size: *size,
@@ -670,7 +735,7 @@ impl SemanticAnalyzer {
                                 if let Some(idx_type) = idx_type {
                                     if idx_type != Type::Int {
                                         let (line, column) = self.get_position(name);
-                                        self.errors.push(SemanticError::TypeMismatch {
+                                        self.add_error(SemanticError::TypeMismatch {
                                             expected: "Int".to_string(),
                                             found: format!("{}", idx_type),
                                             line,
@@ -680,7 +745,7 @@ impl SemanticAnalyzer {
                                 }
                             }
                             _ => {
-                                self.errors.push(SemanticError::Other(format!(
+                                self.add_error(SemanticError::Other(format!(
                                     "Cannot index non-array variable '{}'",
                                     name
                                 )));
@@ -688,8 +753,7 @@ impl SemanticAnalyzer {
                         }
                     }
                     _ => {
-                        self.errors
-                            .push(SemanticError::Other("Invalid input target".to_string()));
+                        self.add_error(SemanticError::Other("Invalid input target".to_string()));
                     }
                 }
             }
@@ -714,7 +778,7 @@ impl SemanticAnalyzer {
                 // Check if the identifier exists
                 if !self.symbol_table.contains(name) {
                     let (line, column) = self.get_position(name);
-                    self.errors.push(SemanticError::UndeclaredIdentifier {
+                    self.add_error(SemanticError::UndeclaredIdentifier {
                         name: name.clone(),
                         line,
                         column,
@@ -730,7 +794,7 @@ impl SemanticAnalyzer {
                 // Check if the array exists
                 if !self.symbol_table.contains(name) {
                     let (line, column) = self.get_position(name);
-                    self.errors.push(SemanticError::UndeclaredIdentifier {
+                    self.add_error(SemanticError::UndeclaredIdentifier {
                         name: name.clone(),
                         line,
                         column,
@@ -750,7 +814,7 @@ impl SemanticAnalyzer {
                         if let Expression::Literal(Literal::Int(idx)) = &**index_expr {
                             if *idx < 0 || *idx as usize >= array_size {
                                 let (line, column) = self.get_position(name);
-                                self.errors.push(SemanticError::ArrayIndexOutOfBounds {
+                                self.add_error(SemanticError::ArrayIndexOutOfBounds {
                                     name: name.clone(),
                                     index: *idx as usize,
                                     size: array_size,
@@ -766,7 +830,7 @@ impl SemanticAnalyzer {
                         if let Some(idx_type) = idx_type {
                             if idx_type != Type::Int {
                                 let (line, column) = self.get_position(name);
-                                self.errors.push(SemanticError::TypeMismatch {
+                                self.add_error(SemanticError::TypeMismatch {
                                     expected: "Int".to_string(),
                                     found: format!("{}", idx_type),
                                     line,
@@ -782,7 +846,7 @@ impl SemanticAnalyzer {
                         Some(symbol_type)
                     }
                     _ => {
-                        self.errors.push(SemanticError::Other(format!(
+                        self.add_error(SemanticError::Other(format!(
                             "Cannot index non-array variable '{}'",
                             name
                         )));
@@ -805,11 +869,11 @@ impl SemanticAnalyzer {
             Expression::BinaryOp(left, op, right) => {
                 // Save the current position before recursion
                 let saved_pos = self.current_expr_pos.clone();
-                
+
                 // Check the types of left and right operands
                 let left_type = self.analyze_expression(left);
                 let right_type = self.analyze_expression(right);
-                
+
                 // Restore the position after recursion
                 self.current_expr_pos = saved_pos;
 
@@ -839,8 +903,8 @@ impl SemanticAnalyzer {
                                 } else {
                                     (line, column + 1) // Estimate position of the divisor
                                 };
-                                
-                                self.errors.push(SemanticError::DivisionByZero {
+
+                                self.add_error(SemanticError::DivisionByZero {
                                     line: zero_line,
                                     column: zero_col,
                                 });
@@ -853,8 +917,8 @@ impl SemanticAnalyzer {
                                     } else {
                                         (line, column + 1) // Estimate position of the divisor
                                     };
-                                    
-                                    self.errors.push(SemanticError::DivisionByZero {
+
+                                    self.add_error(SemanticError::DivisionByZero {
                                         line: zero_line,
                                         column: zero_col,
                                     });
@@ -863,19 +927,19 @@ impl SemanticAnalyzer {
                             }
                         }
 
-                        // Arithmetic operations require numeric types
-                        if left_type != right_type {
-                            self.errors.push(SemanticError::TypeMismatch {
+                        // For arithmetic operations, allow mixed numeric types
+                        if self.are_types_compatible(&left_type, &right_type) {
+                            // Return the resulting type (Float if mixing Int and Float)
+                            Some(self.resulting_type(&left_type, &right_type))
+                        } else {
+                            self.add_error(SemanticError::TypeMismatch {
                                 expected: format!("{}", left_type),
                                 found: format!("{}", right_type),
                                 line,
                                 column,
                             });
-                            return None;
+                            None
                         }
-
-                        // Return the same type for arithmetic operations
-                        Some(left_type)
                     }
 
                     // Comparison operators
@@ -885,26 +949,26 @@ impl SemanticAnalyzer {
                     | Operator::LessEqual
                     | Operator::Equal
                     | Operator::NotEqual => {
-                        // Comparison operations require numeric types
-                        if left_type != right_type {
-                            self.errors.push(SemanticError::TypeMismatch {
+                        // For comparison operations, allow mixed numeric types
+                        if self.are_types_compatible(&left_type, &right_type) {
+                            // Comparison operations return boolean (represented as Int)
+                            Some(Type::Int)
+                        } else {
+                            self.add_error(SemanticError::TypeMismatch {
                                 expected: format!("{}", left_type),
                                 found: format!("{}", right_type),
                                 line,
                                 column,
                             });
-                            return None;
+                            None
                         }
-
-                        // Comparison operations return boolean (represented as Int)
-                        Some(Type::Int)
                     }
 
                     // Logical operators
                     Operator::And | Operator::Or => {
                         // Logical operations work on boolean values (Int)
                         if left_type != Type::Int || right_type != Type::Int {
-                            self.errors.push(SemanticError::TypeMismatch {
+                            self.add_error(SemanticError::TypeMismatch {
                                 expected: "Int".to_string(),
                                 found: format!("{}, {}", left_type, right_type),
                                 line,
@@ -929,7 +993,7 @@ impl SemanticAnalyzer {
                     UnaryOperator::Negate => {
                         // Negation requires a numeric type
                         if expr_type != Type::Int && expr_type != Type::Float {
-                            self.errors.push(SemanticError::TypeMismatch {
+                            self.add_error(SemanticError::TypeMismatch {
                                 expected: "numeric type".to_string(),
                                 found: format!("{}", expr_type),
                                 line: 0, // Would need position info
@@ -944,7 +1008,7 @@ impl SemanticAnalyzer {
                     UnaryOperator::Not => {
                         // Logical negation requires a boolean value (Int)
                         if expr_type != Type::Int {
-                            self.errors.push(SemanticError::TypeMismatch {
+                            self.add_error(SemanticError::TypeMismatch {
                                 expected: "Int".to_string(),
                                 found: format!("{}", expr_type),
                                 line: 0, // Would need position info

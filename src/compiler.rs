@@ -104,7 +104,7 @@ impl Compiler {
                         println!(
                             "{} {} {} = {} (line {}, col {})",
                             kind,
-                            symbol.name.white().bold(),
+                            symbol.name.white(),
                             format!("({})", symbol.symbol_type).blue(),
                             value,
                             symbol.line,

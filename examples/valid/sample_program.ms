@@ -7,12 +7,10 @@ Var
   @define Const MIN_TEMP: Float = (-0.0);
   @define Const DEFAULT_TEMP: Float = 25.5;
   let testValue1: Int = (+42);
-  {-- 
-    ASK PROF:
-      - If an int is assigned to a float, should it be casted?
-  --}
-  let testArray1: [Float; 3] = { (-4.34), (+23.23), 19};
+  let testArray1: [Float; 3] = { (-4.34), (+23.23), 19.0};
   let result: Int = 0;
+
+  let i: Int;
 
 BeginPg
 {
