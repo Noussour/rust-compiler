@@ -1,21 +1,23 @@
 # MiniSoft Compiler Project
 
-A compiler implementation for the MiniSoft language using [Lalrpop](https://github.com/lalrpop/lalrpop) and [Logos](https://github.com/maciejhirsz/logos) in Rust.
+> A robust compiler implementation for the MiniSoft language using [Lalrpop](https://github.com/lalrpop/lalrpop) and [Logos](https://github.com/maciejhirsz/logos) in Rust.
 
 ## Overview
 
 This project implements a complete compiler for the MiniSoft language, including lexical analysis, syntax analysis, semantic analysis, and intermediate code generation. The compiler also includes robust error handling and a symbol table management system.
 
-## MiniSoft Language
+## MiniSoft Language Features
 
 MiniSoft is a simple programming language with the following features:
 
-- Variable and constant declarations
-- Integer and float data types
-- Arrays
-- Control structures (conditionals and loops)
-- Input/output operations
-- Arithmetic, logical, and comparison operators
+| Feature               | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| Variables & Constants | Support for variable declarations and constant definitions |
+| Data Types            | Integer and float primitive types                          |
+| Arrays                | Support for array data structures                          |
+| Control Structures    | Conditionals (if/else) and loops for program flow control  |
+| I/O Operations        | Input and output functionality                             |
+| Operators             | Arithmetic, logical, and comparison operators              |
 
 ## Project Structure
 
@@ -30,8 +32,12 @@ rust-compiler/
 │   └── invalid/
 │       └── errors_sample.ms
 ├── src/
+│   ├── lib.rs              # Library exports
 │   ├── main.rs             # Entry point
 │   ├── compiler.rs         # Compiler orchestration
+│   ├── error_reporter/     # Error reporting module
+│   │   ├── mod.rs          # Module exports
+│   │   └── reporter.rs     # Error reporter implementation
 │   ├── lexer/
 │   │   ├── mod.rs          # Lexer module exports
 │   │   ├── token.rs        # Token definitions
@@ -43,16 +49,18 @@ rust-compiler/
 │   │   └── error.rs        # Parser error handling
 │   ├── semantics/
 │   │   ├── mod.rs          # Semantics module exports
-│   │   ├── analyzer.rs     # Semantic analyzer
+│   │   ├── analyzer.rs     # Semantic analyzer main implementation
+│   │   ├── analyzer/       # Semantic analyzer components
+│   │   │   ├── decl_analyzer.rs    # Declaration analysis
+│   │   │   ├── expr_analyzer.rs    # Expression analysis
+│   │   │   ├── stmt_analyzer.rs    # Statement analysis
+│   │   │   └── type_utils.rs       # Type utilities
 │   │   ├── symbol_table.rs # Symbol table implementation
 │   │   └── error.rs        # Semantic error handling
-│   ├── codegen/
-│   │   ├── mod.rs          # Code generation module exports
-│   │   ├── quadruple.rs    # Quadruple representation
-│   │   └── generator.rs    # Intermediate code generator
-│   └── error/
-│       ├── mod.rs          # Error module exports
-│       └── reporter.rs     # Error reporting utilities
+│   └── codegen/
+│       ├── mod.rs          # Code generation module exports
+│       ├── quadruple.rs    # Quadruple representation
+│       └── generator.rs    # Intermediate code generator
 └── tests/
     ├── lexer_tests.rs
     ├── parser_tests.rs
@@ -60,16 +68,34 @@ rust-compiler/
     └── integration_tests.rs
 ```
 
-## Features
+## Compiler Components
 
-- **Lexical Analysis**: Tokenizes MiniSoft source code using Logos
-- **Syntax Analysis**: Parses tokens into an Abstract Syntax Tree (AST) using LALRPOP
-- **Semantic Analysis**: Performs type checking and other semantic validations
-- **Symbol Table**: Manages identifiers and their associated information
-- **Error Handling**: Reports errors with line and column information
-- **Intermediate Code Generation**: Generates quadruples for the input program
+#### 1. Lexical Analysis
 
-## Semantic Error Checking
+- Tokenizes MiniSoft source code using the Logos lexer generator
+- Identifies keywords, operators, identifiers, and literals
+
+#### 2. Syntax Analysis
+
+- Parses tokens into an Abstract Syntax Tree (AST) using LALRPOP
+- Validates program structure according to MiniSoft grammar
+
+#### 3. Semantic Analysis
+
+- Performs comprehensive type checking and validation
+- Builds and manages symbol tables for scoped declarations
+
+#### 4. Error Handling
+
+- Reports precise errors with line and column information
+- Provides meaningful diagnostic messages
+
+#### 5. Intermediate Code Generation
+
+- Generates quadruple-based intermediate representation
+- Forms the basis for future optimization and code generation phases
+
+## Semantic Error Detection
 
 The compiler detects the following semantic errors:
 
