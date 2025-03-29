@@ -112,6 +112,26 @@ impl SemanticAnalyzer {
         &self.symbol_table
     }
 
+    /// Extracts a literal value from an expression if possible
+    fn extract_literal(&self, expr: &Expression) -> Option<Literal> {
+        match expr {
+            Expression::Literal(lit) => Some(lit.clone()),
+            Expression::UnaryOp(UnaryOperator::Negate, inner) => {
+                if let Some(inner_lit) = self.extract_literal(inner) {
+                    match inner_lit {
+                        Literal::Int(val) => Some(Literal::Int(-val)),
+                        Literal::Float(val) => Some(Literal::Float(-val)),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            }
+            // Only handle simple literals, not complex expressions
+            _ => None,
+        }
+    }
+
     /// Analyzes a declaration
     fn analyze_declaration(&mut self, declaration: &Declaration) {
         match declaration {
@@ -237,6 +257,10 @@ impl SemanticAnalyzer {
             Declaration::VariableWithInit(names, typ, expr) => {
                 // First, check the expression
                 let expr_type = self.analyze_expression(expr);
+                
+                // Try to extract the literal value
+                let literal_value = self.extract_literal(expr);
+                
                 if let Some(expr_type) = expr_type {
                     if expr_type != *typ {
                         let (line, column) = self.get_position(&names[0]);
@@ -266,12 +290,12 @@ impl SemanticAnalyzer {
                         continue;
                     }
 
-                    // Add to symbol table
+                    // Add to symbol table with value if it's a literal
                     let symbol = Symbol {
                         name: name.clone(),
                         kind: SymbolKind::Variable,
                         symbol_type: typ.clone(),
-                        value: None, // Value is set at runtime
+                        value: literal_value.clone(), // Store the value if it's a literal
                         line,
                         column,
                     };
@@ -288,8 +312,18 @@ impl SemanticAnalyzer {
                     )));
                 }
 
-                // Check types of all initializers
+                // Try to extract all literal values
+                let mut literal_values = Vec::new();
+                let mut all_literals = true;
+                
                 for value in values {
+                    if let Some(lit) = self.extract_literal(value) {
+                        literal_values.push(lit);
+                    } else {
+                        all_literals = false;
+                        break;
+                    }
+                    
                     let value_type = self.analyze_expression(value);
                     if let Some(value_type) = value_type {
                         if value_type != *typ {
@@ -321,12 +355,19 @@ impl SemanticAnalyzer {
                         continue;
                     }
 
+                    // Create an array initializer literal if we have all literals
+                    let array_value = if all_literals && !literal_values.is_empty() {
+                        Some(Literal::String(format!("{:?}", literal_values))) // Use String type as a temp container
+                    } else {
+                        None
+                    };
+
                     // Add to symbol table
                     let symbol = Symbol {
                         name: name.clone(),
                         kind: SymbolKind::Array(*size),
                         symbol_type: typ.clone(),
-                        value: None, // Array values are set at runtime
+                        value: array_value, // Store array literal values if all are literals
                         line,
                         column,
                     };
