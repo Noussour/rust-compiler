@@ -212,6 +212,8 @@ impl ErrorReporter {
                 "Identifier cannot contain consecutive underscores: '{}'",
                 text
             );
+        } else if text.ends_with("_") {
+            message = format!("Identifier cannot end with underscore: '{}'", text);
         } else if text.starts_with(|c: char| c.is_numeric())
             && text.contains(|c: char| c.is_alphabetic())
         {

@@ -139,10 +139,9 @@ pub enum Token {
     })]
     StringLiteral(String),
 
-    // Identifiers
-    #[regex("[a-zA-Z][a-zA-Z0-9_]*", |lex| {
+    #[regex("[a-zA-Z][a-z0-9_]*", |lex| {
         let s = lex.slice();
-        if s.len() <= 14 && !s.contains("__") {
+        if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") {
             Some(s.to_string())
         } else {
             None

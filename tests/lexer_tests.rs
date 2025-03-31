@@ -83,6 +83,10 @@ mod lexer_tests {
         // Test consecutive underscores
         let mut lexer = Token::lexer("invalid__id");
         assert_eq!(lexer.next(), Some(Err(())));
+
+        // Test finishing with an underscore
+        let mut lexer = Token::lexer("invalid_");
+        assert_eq!(lexer.next(), Some(Err(())));
     }
 
     #[test]
