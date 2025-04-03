@@ -87,6 +87,12 @@ mod lexer_tests {
         // Test finishing with an underscore
         let mut lexer = Token::lexer("invalid_");
         assert_eq!(lexer.next(), Some(Err(())));
+
+        // Test integer literal out of range
+        let mut lexer = Token::lexer("32768");
+        assert_eq!(lexer.next(), Some(Err(())));
+        let mut lexer = Token::lexer("(-32769)");
+        assert_eq!(lexer.next(), Some(Err(())));
     }
 
     #[test]

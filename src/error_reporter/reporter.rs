@@ -218,6 +218,29 @@ impl ErrorReporter {
             && text.contains(|c: char| c.is_alphabetic())
         {
             message = format!("Identifier cannot start with a number: '{}'", text);
+        } else if text
+            .chars()
+            .all(|c: char| c.is_numeric() || c == '+' || c == '-')
+        {
+            if let Ok(num) = text.parse::<i32>() {
+                if !(-32768..=32767).contains(&num) {
+                    message = format!(
+                        "Integer literal out of range: '{}' (must be between -32768 and 32767)",
+                        text
+                    );
+                }
+            }
+        } else if text.starts_with('(') && text.ends_with(')') {
+            // Check for parenthesized integers like (123) or (-123)
+            let inner = &text[1..text.len() - 1];
+            if let Ok(num) = inner.parse::<i32>() {
+                if !(-32768..=32767).contains(&num) {
+                    message = format!(
+                        "Integer literal out of range: '{}' (must be between -32768 and 32767)",
+                        text
+                    );
+                }
+            }
         }
 
         self.add_error(ErrorKind::Lexical, &message, line, column);
@@ -337,6 +360,8 @@ impl ErrorReporter {
                     return Some("Remove consecutive underscores".to_string());
                 } else if error.message.contains("cannot start with a number") {
                     return Some("Start identifier with a letter instead of a number".to_string());
+                } else if error.message.contains("Integer literal out of range") {
+                    return Some("Ensure integer values are between -32768 and 32767".to_string());
                 }
             }
             ErrorKind::Syntax => {

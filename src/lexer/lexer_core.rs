@@ -61,7 +61,6 @@ impl<'a> Lexer<'a> {
         Position { line, column }
     }
 
-    // Enhanced method to categorize lexical errors
     pub fn categorize_lexical_error(&self, text: &str) -> String {
         // Common lexical error patterns and their user-friendly descriptions
         if text.starts_with('"') && !text.ends_with('"') {
@@ -83,6 +82,12 @@ impl<'a> Lexer<'a> {
 
         if text.contains("__") {
             return "Identifier cannot contain consecutive underscores".to_string();
+        }
+
+        if let Ok(num) = text.parse::<i32>() {
+            if !(-32768..=32767).contains(&num) {
+                return "Integer literal out of range".to_string();
+            }
         }
 
         "Invalid token".to_string()

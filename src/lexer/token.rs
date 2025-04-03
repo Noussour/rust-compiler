@@ -111,23 +111,22 @@ pub enum Token {
     // Literals
     #[regex("(\\([+-][0-9]+\\))|([0-9]+)", |lex| {
         let s = lex.slice();
-        if s.starts_with('(') {
-            // Remove parentheses and parse
+        let parsed: Option<i32> = if s.starts_with('(') {
             s[1..s.len()-1].parse().ok()
         } else {
-            // Parse directly
             s.parse().ok()
-        }
+        };
+        
+        // Only accept values in i16 range
+        parsed.filter(|&val| (-32768..=32767).contains(&val))
     })]
     IntLiteral(i32),
 
     #[regex("(\\([+-][0-9]+\\.[0-9]+\\))|([0-9]+\\.[0-9]+)", |lex| {
         let s = lex.slice();
         if s.starts_with('(') {
-            // Remove parentheses and parse
             s[1..s.len()-1].parse().ok()
         } else {
-            // Parse directly
             s.parse().ok()
         }
     })]
