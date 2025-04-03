@@ -1,4 +1,4 @@
-use crate::parser::ast::{Expression, Literal, Type, UnaryOperator};
+use crate::parser::ast::{Expression, Literal, Type};
 use crate::semantics::analyzer::SemanticAnalyzer;
 
 impl SemanticAnalyzer {
@@ -33,24 +33,29 @@ impl SemanticAnalyzer {
 
     /// Extracts a literal value from an expression if possible
     pub(crate) fn extract_literal(&self, expr: &Expression) -> Option<Literal> {
-        let mut current_expr = expr;
-
-        loop {
-            match current_expr {
-                Expression::Literal(lit) => return Some(lit.clone()),
-                Expression::UnaryOp(UnaryOperator::Negate, inner) => match inner.as_ref() {
-                    Expression::Literal(Literal::Int(val)) => {
-                        return Some(Literal::Int(-val));
-                    }
-                    crate::parser::ast::Expression::Literal(
-                        crate::parser::ast::Literal::Float(val),
-                    ) => {
-                        return Some(Literal::Float(-val));
-                    }
-                    _ => current_expr = inner,
-                },
-                _ => return None,
-            }
+        match expr {
+            Expression::Literal(lit) => Some(lit.clone()),
+            _ => None,
         }
+
+        // let mut _current_expr = expr;
+        //
+        // loop {
+        //     match current_expr {
+        //         Expression::Literal(lit) => return Some(lit.clone()),
+        //         Expression::UnaryOp(UnaryOperator::Negate, inner) => match inner.as_ref() {
+        //             Expression::Literal(Literal::Int(val)) => {
+        //                 return Some(Literal::Int(-val));
+        //             }
+        //             crate::parser::ast::Expression::Literal(
+        //                 crate::parser::ast::Literal::Float(val),
+        //             ) => {
+        //                 return Some(Literal::Float(-val));
+        //             }
+        //             _ => current_expr = inner,
+        //         },
+        //         _ => return None,
+        //     }
+        // }
     }
 }

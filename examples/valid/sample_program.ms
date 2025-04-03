@@ -28,8 +28,10 @@ BeginPg
   <!- TODO: Think about this case, ask prof and handle it if necessary -!>
   result := result2;
 
-  <!- TODO: Add obligation parentheses between a negative sign number -!>
-  sum := -32767;
+  sum := (-32767);
+
+  <!- TODO: Ask if it is allowed to negate an expression -!>
+  <!- sum := -i; -!>
   
   <!- Input phase -!>
   for i from 0 to 9 step 1 {

@@ -207,9 +207,6 @@ UnaryExpr: Expression = {
     "!" <expr:PrimaryExpr> => {
         Expression::UnaryOp(UnaryOperator::Not, Box::new(expr))
     },
-    "-" <expr:PrimaryExpr> => {
-        Expression::UnaryOp(UnaryOperator::Negate, Box::new(expr))
-    },
     PrimaryExpr,
 };
 
