@@ -9,16 +9,25 @@ Var
   let test_value1: Int = (+42);
   let test_array1: [Float; 3] = { (-4.34), (+23.23), 19.0};
   let result: Int = 0;
+  let result2: Float = 0.0;
 
   let i: Int;
 
+  let x, z: Int;
+  let y: Float;
+
 BeginPg
 {
+  z := x + y; <!- TODO: Ask if --> Int + Float should result in Float, can't assign to Int -!>
+
   {--
     This is a sample program that calculates the average
     of a series of temperature readings
   --}
   
+  <!- TODO: Think about this case, ask prof and handle it if necessary -!>
+  result := result2;
+
   sum := 0;
   
   <!- Input phase -!>
@@ -34,6 +43,9 @@ BeginPg
       if (temperatures[i] < (-10.5)) then {
         output("Warning: Temperature well below minimum value!");
         temperatures[i] := Min_temp;
+      }
+      <!- TODO: Confirm that putting non boolean variable alone is valid condition -!>
+      if (i) then {
       }
     }
     
