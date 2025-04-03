@@ -2,9 +2,9 @@
 indent.log
 
 # Ignore everything in report folder
-/report/*
+/docs/*
 # Keep only these specific files
-!/report/report.tex
-!/report/out/
-/report/out/*
-!/report/out/report.pdf
+!/docs/report.tex
+!/docs/out/
+/docs/out/*
+!/docs/out/report.pdf

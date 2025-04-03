@@ -1,10 +1,10 @@
 # MiniSoft Compiler Project
 
-> A robust compiler implementation for the MiniSoft language using [Lalrpop](https://github.com/lalrpop/lalrpop) and [Logos](https://github.com/maciejhirsz/logos) in Rust.
+> A robust compiler implementation for the MiniSoft language using [Lalrpop](https://github.com/lalrpop/lalrpop), [Logos](https://github.com/maciejhirsz/logos), and [Cranelift](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift) in Rust.
 
 ## Overview
 
-This project implements a complete compiler for the MiniSoft language, including lexical analysis, syntax analysis, semantic analysis, and intermediate code generation. The compiler also includes robust error handling and a symbol table management system.
+This project implements a complete compiler for the MiniSoft language, including lexical analysis, syntax analysis, semantic analysis, and native code generation using Cranelift. The compiler also includes robust error handling and a symbol table management system.
 
 ## MiniSoft Language Features
 
@@ -26,6 +26,10 @@ rust-compiler/
 ├── Cargo.toml
 ├── build.rs             # Build script for LALRPOP
 ├── README.md
+├── docs/
+│   ├── report.tex       # LaTeX source for compiler documentation
+│   └── out/
+│       └── report.pdf   # Compiled technical documentation
 ├── examples/
 │   ├── valid/
 │   │   └── sample_program.ms
@@ -35,7 +39,7 @@ rust-compiler/
 │   ├── lib.rs              # Library exports
 │   ├── main.rs             # Entry point
 │   ├── compiler.rs         # Compiler orchestration
-│   ├── error_reporter/     # Error reporting module
+│   ├── error_reporter/
 │   │   ├── mod.rs          # Module exports
 │   │   └── reporter.rs     # Error reporter implementation
 │   ├── lexer/
@@ -59,8 +63,8 @@ rust-compiler/
 │   │   └── error.rs        # Semantic error handling
 │   └── codegen/
 │       ├── mod.rs          # Code generation module exports
-│       ├── quadruple.rs    # Quadruple representation
-│       └── generator.rs    # Intermediate code generator
+│       ├── quadruple.rs    # Quadruple intermediate representation
+│       └── generator.rs    # Cranelift code generator
 └── tests/
     ├── lexer_tests.rs
     ├── parser_tests.rs
@@ -90,10 +94,11 @@ rust-compiler/
 - Reports precise errors with line and column information
 - Provides meaningful diagnostic messages
 
-#### 5. Intermediate Code Generation
+#### 5. Code Generation
 
-- Generates quadruple-based intermediate representation
-- Forms the basis for future optimization and code generation phases
+- Transforms AST into quadruple intermediate representation
+- Generates native machine code using the Cranelift code generator
+- Produces efficient executable code from the quadruple representation
 
 ## Semantic Error Detection
 
@@ -118,3 +123,4 @@ cargo run -- examples/valid/sample_program.ms
 # Run tests
 cargo test
 ```
+
