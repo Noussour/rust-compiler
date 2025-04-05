@@ -1,5 +1,6 @@
 use crate::error_reporter::ErrorReporter;
 use crate::lexer::{lexer_core::TokenWithPosition, token::Token, Lexer};
+use crate::parser::ast::{Declaration, Expression, Program, Statement};
 use crate::parser::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
 use colored::*;
@@ -150,21 +151,16 @@ impl Compiler {
                 token_with_pos.position.line, token_with_pos.position.column
             )
             .blue();
+            let span = format!("{:?}", token_with_pos.span).magenta();
 
             println!(
                 "{}  →  {}  {}  [span: {}]",
-                token_name,
-                token_value,
-                position,
-                format!("{:?}", token_with_pos.span).magenta()
+                token_name, token_value, position, span
             );
         }
     }
 
-    fn build_position_map(
-        &self,
-        program: &crate::parser::ast::Program,
-    ) -> HashMap<String, (usize, usize)> {
+    fn build_position_map(&self, program: &Program) -> HashMap<String, (usize, usize)> {
         let mut position_map = HashMap::new();
 
         // Add program name position if available
@@ -175,17 +171,17 @@ impl Compiler {
         // Process declarations to get positions of all variables
         for decl in &program.declarations {
             match decl {
-                crate::parser::ast::Declaration::Variable(names, _)
-                | crate::parser::ast::Declaration::Array(names, _, _)
-                | crate::parser::ast::Declaration::VariableWithInit(names, _, _)
-                | crate::parser::ast::Declaration::ArrayWithInit(names, _, _, _) => {
+                Declaration::Variable(names, _)
+                | Declaration::Array(names, _, _)
+                | Declaration::VariableWithInit(names, _, _)
+                | Declaration::ArrayWithInit(names, _, _, _) => {
                     for name in names {
                         if let Some(line_col) = self.find_identifier_position(name) {
                             position_map.insert(name.clone(), line_col);
                         }
                     }
                 }
-                crate::parser::ast::Declaration::Constant(name, _, _) => {
+                Declaration::Constant(name, _, _) => {
                     if let Some(line_col) = self.find_identifier_position(name) {
                         position_map.insert(name.clone(), line_col);
                     }
@@ -201,31 +197,31 @@ impl Compiler {
 
     fn collect_statement_positions(
         &self,
-        statements: &[crate::parser::ast::Statement],
+        statements: &[Statement],
         position_map: &mut HashMap<String, (usize, usize)>,
     ) {
         for statement in statements {
             match statement {
-                crate::parser::ast::Statement::Assignment(target, expr) => {
+                Statement::Assignment(target, expr) => {
                     // Collect identifiers from the target
                     self.collect_expr_positions(target, position_map);
                     // Collect identifiers from the expression
                     self.collect_expr_positions(expr, position_map);
                 }
-                crate::parser::ast::Statement::IfThen(condition, then_block) => {
+                Statement::IfThen(condition, then_block) => {
                     self.collect_expr_positions(condition, position_map);
                     self.collect_statement_positions(then_block, position_map);
                 }
-                crate::parser::ast::Statement::IfThenElse(condition, then_block, else_block) => {
+                Statement::IfThenElse(condition, then_block, else_block) => {
                     self.collect_expr_positions(condition, position_map);
                     self.collect_statement_positions(then_block, position_map);
                     self.collect_statement_positions(else_block, position_map);
                 }
-                crate::parser::ast::Statement::DoWhile(body, condition) => {
+                Statement::DoWhile(body, condition) => {
                     self.collect_statement_positions(body, position_map);
                     self.collect_expr_positions(condition, position_map);
                 }
-                crate::parser::ast::Statement::For(var, from, to, step, body) => {
+                Statement::For(var, from, to, step, body) => {
                     // Add position for the loop variable
                     if let Some(line_col) = self.find_identifier_position(var) {
                         position_map.insert(var.clone(), line_col);
@@ -235,31 +231,31 @@ impl Compiler {
                     self.collect_expr_positions(step, position_map);
                     self.collect_statement_positions(body, position_map);
                 }
-                crate::parser::ast::Statement::Input(var) => {
+                Statement::Input(var) => {
                     self.collect_expr_positions(var, position_map);
                 }
-                crate::parser::ast::Statement::Output(exprs) => {
+                Statement::Output(exprs) => {
                     for expr in exprs {
                         self.collect_expr_positions(expr, position_map);
                     }
                 }
-                crate::parser::ast::Statement::Empty => {}
+                Statement::Empty => {}
             }
         }
     }
 
     fn collect_expr_positions(
         &self,
-        expr: &crate::parser::ast::Expression,
+        expr: &Expression,
         position_map: &mut HashMap<String, (usize, usize)>,
     ) {
         match expr {
-            crate::parser::ast::Expression::Identifier(name) => {
+            Expression::Identifier(name) => {
                 if let Some(line_col) = self.find_identifier_position(name) {
                     position_map.insert(name.clone(), line_col);
                 }
             }
-            crate::parser::ast::Expression::ArrayAccess(name, index) => {
+            Expression::ArrayAccess(name, index) => {
                 if let Some(line_col) = self.find_identifier_position(name) {
                     position_map.insert(name.clone(), line_col);
 
@@ -269,14 +265,14 @@ impl Compiler {
                 }
                 self.collect_expr_positions(index, position_map);
             }
-            crate::parser::ast::Expression::BinaryOp(left, _, right) => {
+            Expression::BinaryOp(left, _, right) => {
                 self.collect_expr_positions(left, position_map);
                 self.collect_expr_positions(right, position_map);
             }
-            crate::parser::ast::Expression::UnaryOp(_, operand) => {
+            Expression::UnaryOp(_, operand) => {
                 self.collect_expr_positions(operand, position_map);
             }
-            crate::parser::ast::Expression::Literal(_) => {
+            Expression::Literal(_) => {
                 // No identifiers to track in literals
             }
         }

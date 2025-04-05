@@ -219,27 +219,6 @@ impl SemanticAnalyzer {
                 let expr_type = expr_type.unwrap();
 
                 match op {
-                    // UnaryOperator::Negate => {
-                    //     // Negation requires a numeric type
-                    //     if expr_type != Type::Int && expr_type != Type::Float {
-                    //         let (line, column) = if let Some(pos) = &self.current_expr_pos {
-                    //             (pos.line, pos.column)
-                    //         } else {
-                    //             (1, 1)
-                    //         };
-                    //
-                    //         self.add_error(SemanticError::TypeMismatch {
-                    //             expected: "numeric type".to_string(),
-                    //             found: format!("{}", expr_type),
-                    //             line,
-                    //             column,
-                    //         });
-                    //         return None;
-                    //     }
-                    //
-                    //     // Negation returns the same type
-                    //     Some(expr_type)
-                    // }
                     UnaryOperator::Not => {
                         // Logical negation requires a boolean value (Int)
                         if expr_type != Type::Int {

@@ -117,7 +117,6 @@ pub enum Token {
             s.parse().ok()
         };
         
-        // Only accept values in i16 range
         parsed.filter(|&val| (-32768..=32767).contains(&val))
     })]
     IntLiteral(i32),

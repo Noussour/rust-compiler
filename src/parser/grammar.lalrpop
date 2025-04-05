@@ -74,7 +74,7 @@ extern {
         Int => Token::IntLiteral(<i32>),
         Float => Token::FloatLiteral(<f32>),
         String => Token::StringLiteral(<String>),
-        Idf => Token::Identifier(<String>),  // Renamed to avoid conflict
+        Idf => Token::Identifier(<String>),
     }
 }
 

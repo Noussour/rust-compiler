@@ -37,25 +37,5 @@ impl SemanticAnalyzer {
             Expression::Literal(lit) => Some(lit.clone()),
             _ => None,
         }
-
-        // let mut _current_expr = expr;
-        //
-        // loop {
-        //     match current_expr {
-        //         Expression::Literal(lit) => return Some(lit.clone()),
-        //         Expression::UnaryOp(UnaryOperator::Negate, inner) => match inner.as_ref() {
-        //             Expression::Literal(Literal::Int(val)) => {
-        //                 return Some(Literal::Int(-val));
-        //             }
-        //             crate::parser::ast::Expression::Literal(
-        //                 crate::parser::ast::Literal::Float(val),
-        //             ) => {
-        //                 return Some(Literal::Float(-val));
-        //             }
-        //             _ => current_expr = inner,
-        //         },
-        //         _ => return None,
-        //     }
-        // }
     }
 }

@@ -97,7 +97,6 @@ pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
 
 /// One-step parsing from source to AST
 /// Handles both lexing and parsing in a single function
-#[allow(dead_code)]
 pub fn parse_source(source: &str) -> Result<Program, ParseError> {
     let lexer = Lexer::new(source);
     let tokens: Vec<TokenWithPosition> = lexer.collect();

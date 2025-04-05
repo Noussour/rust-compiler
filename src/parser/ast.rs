@@ -85,7 +85,6 @@ pub enum Operator {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
-    // Negate,
     Not,
 }
 
