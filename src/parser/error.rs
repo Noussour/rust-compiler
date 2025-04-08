@@ -1,71 +1,94 @@
-use std::fmt;
+use crate::lexer::token::Token;
 
-/// Parser error types
-#[derive(Debug, Clone)]
-pub enum ParseError {
-    /// Syntax problem at a specific location
-    SyntaxError {
-        message: String,
-        line: usize,
-        column: usize,
-    },
+// Parser error types
+#[derive(Debug, PartialEq, Clone)]
+pub enum SyntaxErrorType {
+    // Program structure errors
+    InvalidProgramStructure(String),
+    MissingMainPrgm,
+    MissingBeginPgOrEndPg,
+    MismatchedBraces,
 
-    /// Got a token we weren't expecting
-    UnexpectedToken {
-        expected: String,
-        found: String,
-        line: usize,
-        column: usize,
-    },
+    // Declaration errors
+    InvalidDeclarationFormat(String),
+    MissingColonInDeclaration,
+    MissingSemicolonAfterDeclaration,
+    InvalidArraySyntax,
+    NonIntegerArraySize,
+    InvalidConstantSyntax,
 
-    /// Hit the end of file too soon
-    UnexpectedEOF {
-        expected: String,
-        line: usize,
-        column: usize,
-    },
+    // Identifier errors
+    InvalidIdentifierFormat(String),
+    ReservedKeywordAsIdentifier(String),
 
-    /// Catch-all for other parser problems
-    Other(String),
+    // Type errors
+    InvalidType(String),
+    MissingParenthesesForSignedLiteral,
+
+    // Instruction errors
+    MissingAssignmentOperator,
+    MissingSemicolonAfterStatement,
+    InvalidConditionalStructure,
+    InvalidLoopStructure,
+    MissingStepInForLoop,
+    MissingParenthesesInControlStructure,
+
+    // Operator/Expression errors
+    InvalidOperator(String),
+    MismatchedParentheses,
+    InvalidExpressionStructure,
+
+    // Input/Output errors
+    InvalidInputOutputSyntax,
+    UnquotedStringInOutput,
+
+    // Comment errors
+    UnterminatedSingleLineComment,
+    UnterminatedMultiLineComment,
+
+    // General syntax errors
+    UnexpectedToken(String, String), // (expected, found)
+    GenericError(String),
 }
 
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseError::SyntaxError {
-                message,
-                line,
-                column,
-            } => write!(
-                f,
-                "Syntax error at line {}, column {}: {}",
-                line, column, message
-            ),
 
-            ParseError::UnexpectedToken {
-                expected,
-                found,
-                line,
-                column,
-            } => write!(
-                f,
-                "Unexpected token at line {}, column {}: expected {}, found {}",
-                line, column, expected, found
-            ),
+#[derive(Debug, Clone)]
+pub struct SyntaxError {
+    pub error_type: SyntaxErrorType,
+    pub line: Option<usize>,
+    pub column: Option<usize>,
+    pub line_source: Option<String>, // Optional source line for better error reporting
+}
 
-            ParseError::UnexpectedEOF {
-                expected,
-                line,
-                column,
-            } => write!(
-                f,
-                "Unexpected end of file at line {}, column {}: expected {}",
-                line, column, expected
-            ),
 
-            ParseError::Other(msg) => write!(f, "Parser error: {}", msg),
+impl From<lalrpop_util::ParseError<usize, Token, String>> for SyntaxError {
+    fn from(err: lalrpop_util::ParseError<usize, Token, String>) -> Self {
+        match err {
+            lalrpop_util::ParseError::InvalidToken { location } => SyntaxError {
+                error_type: SyntaxErrorType::GenericError(format!("Invalid token at position {}", location)),
+                line: None,
+                column: None,
+            },
+            lalrpop_util::ParseError::UnrecognizedEof { location, expected } => SyntaxError {
+                error_type: SyntaxErrorType::GenericError(format!("Unexpected end of file, expected: {}", expected.join(", "))),
+                line: None,
+                column: None,
+            },
+            lalrpop_util::ParseError::UnrecognizedToken { token: (start, token, end), expected } => SyntaxError {
+                error_type: SyntaxErrorType::UnexpectedToken(expected.join(", "), format!("{:?}", token)),
+                line: None,
+                column: None,
+            },
+            lalrpop_util::ParseError::ExtraToken { token: (start, token, end) } => SyntaxError {
+                error_type: SyntaxErrorType::GenericError(format!("Extra token: {:?}", token)),
+                line: None,
+                column: None,
+            },
+            lalrpop_util::ParseError::User { error } => SyntaxError {
+                error_type: SyntaxErrorType::GenericError(error),
+                line: None,
+                column: None,
+            },
         }
     }
 }
-
-impl std::error::Error for ParseError {}

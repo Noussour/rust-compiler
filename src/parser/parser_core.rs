@@ -3,100 +3,37 @@ mod grammar_parser {
     include!(concat!(env!("OUT_DIR"), "/parser/grammar.rs"));
 }
 
-use crate::lexer::lexer_core::{Lexer, TokenWithPosition};
+use crate::lexer::lexer_core::TokenWithMetaData;
 use crate::lexer::token::Token;
 use crate::parser::ast::Program;
-use crate::parser::error::ParseError;
+use crate::parser::error::SyntaxError;
+
+
+// Add a new function to generate LALRPOP compatible tokens
+pub fn tokenize_for_lalrpop(tokens: Vec<TokenWithMetaData>) -> Vec<Result<(usize, Token, usize), String>> {
+    tokens
+        .into_iter()
+        .map(|token| {
+            Ok((token.span.start, token.kind, token.span.end))
+        })
+        .collect()
+}
+
 
 /// Parses tokens into an AST
 ///
 /// Takes the lexer's tokens and turns them into a proper syntax tree
 /// that represents our MiniSoft program
-pub fn parse(tokens: Vec<TokenWithPosition>) -> Result<Program, ParseError> {
+pub fn parse(tokens: Vec<TokenWithMetaData>) -> Result<Program, SyntaxError> {
     // Need to reformat tokens for LALRPOP
-    let token_inputs: Vec<(usize, Token, usize)> = tokens
-        .iter()
-        .map(|t| (t.span.start, t.token.clone(), t.span.end))
-        .collect();
-
-    let lexer = token_inputs.into_iter();
-
-    match grammar_parser::ProgramParser::new().parse(lexer) {
+    // Convert tokens to LALRPOP format
+     let lalrpop_tokens = tokenize_for_lalrpop(tokens);
+    
+     // Create an iterator that LALRPOP can use
+     let token_iter = lalrpop_tokens.into_iter();
+     
+    match grammar_parser::ProgramParser::new().parse(token_iter) {
         Ok(program) => Ok(program),
-        Err(err) => {
-            match err {
-                lalrpop_util::ParseError::InvalidToken { location } => {
-                    // Grab the token info based on position
-                    if let Some(token) = tokens.iter().find(|t| t.span.start == location) {
-                        Err(ParseError::SyntaxError {
-                            message: "Invalid token".to_string(),
-                            line: token.position.line,
-                            column: token.position.column,
-                        })
-                    } else {
-                        Err(ParseError::Other(
-                            "Invalid token at unknown location".to_string(),
-                        ))
-                    }
-                }
-                lalrpop_util::ParseError::UnrecognizedEof {
-                    location: _,
-                    expected,
-                } => {
-                    // Get position from the last token
-                    if let Some(last_token) = tokens.last() {
-                        Err(ParseError::UnexpectedEOF {
-                            expected: expected.join(", "),
-                            line: last_token.position.line,
-                            column: last_token.position.column + last_token.text.len(),
-                        })
-                    } else {
-                        Err(ParseError::Other("Unexpected end of file".to_string()))
-                    }
-                }
-                lalrpop_util::ParseError::UnrecognizedToken {
-                    token: (start, token, _end),
-                    expected,
-                } => {
-                    // Look up the original token info
-                    if let Some(token_info) = tokens.iter().find(|t| t.span.start == start) {
-                        Err(ParseError::UnexpectedToken {
-                            expected: expected.join(", "),
-                            found: format!("{}", token),
-                            line: token_info.position.line,
-                            column: token_info.position.column,
-                        })
-                    } else {
-                        Err(ParseError::Other(format!("Unexpected token: {}", token)))
-                    }
-                }
-                lalrpop_util::ParseError::ExtraToken {
-                    token: (start, token, _),
-                } => {
-                    // Find matching token in our original list
-                    if let Some(token_info) = tokens.iter().find(|t| t.span.start == start) {
-                        Err(ParseError::SyntaxError {
-                            message: format!("Extra token: {}", token),
-                            line: token_info.position.line,
-                            column: token_info.position.column,
-                        })
-                    } else {
-                        Err(ParseError::Other(format!("Extra token: {}", token)))
-                    }
-                }
-                lalrpop_util::ParseError::User { error } => {
-                    Err(ParseError::Other(format!("User error: {}", error)))
-                }
-            }
-        }
+        Err(e) => Err(SyntaxError::from(e)),
     }
-}
-
-/// One-step parsing from source to AST
-/// Handles both lexing and parsing in a single function
-#[allow(dead_code)]
-pub fn parse_source(source: &str) -> Result<Program, ParseError> {
-    let lexer = Lexer::new(source);
-    let tokens: Vec<TokenWithPosition> = lexer.collect();
-    parse(tokens)
 }
