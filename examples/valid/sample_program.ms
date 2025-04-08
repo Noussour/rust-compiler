@@ -72,7 +72,7 @@ BeginPg
   if ((average >= 50.0) AND (average <= (+75.0))) then {
     output("Average temperature is within safe operating range.");
   } else {
-    output("Warning: Average temperature is outside safe operating range!");
+    output("Warningط: Average temperature is outside safe operating range!");
   }
 
   <!- Test operations priority -!>

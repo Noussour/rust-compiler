@@ -1,124 +1,111 @@
+use logos::Logos;
 use crate::lexer::token::Token;
-use logos::{Lexer as LogosLexer, Logos};
+use crate::lexer::error::LexicalErrorType;
 use std::ops::Range;
-
-// Position in source code with 1-based indexing
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Position {
-    pub line: usize,
-    pub column: usize,
-}
 
 // Token with its source position information
 #[derive(Debug, Clone, PartialEq)]
-pub struct TokenWithPosition {
-    pub token: Token,
-    pub text: String,
-    pub position: Position,
+pub struct TokenWithMetaData {
+    pub kind: Token,
+    pub value: String,
+    pub line: usize,
+    pub column: usize,
     pub span: Range<usize>,
 }
 
-// Wrapper around Logos lexer to track position information
-pub struct Lexer<'a> {
-    logos_lexer: LogosLexer<'a, Token>,
-    line_starts: Vec<usize>, // Offsets where each line begins
+pub struct LexicalError {
+    pub invalid_token: TokenWithMetaData,
+    pub error_type: LexicalErrorType,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(source: &'a str) -> Self {
-        let logos_lexer = Token::lexer(source);
-        let line_starts = Self::compute_line_starts(source);
+fn byte_offset_to_position(src: &str, byte_offset: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut col = 1;
+    let mut count = 0;
 
-        Self {
-            logos_lexer,
-            line_starts,
+    for ch in src.chars() {
+        if count == byte_offset {
+            break;
         }
+
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+
+        count += ch.len_utf8();
     }
 
-    // Records starting positions of all lines in the source
-    fn compute_line_starts(source: &str) -> Vec<usize> {
-        let mut line_starts = vec![0];
+    (line, col)
+}
 
-        for (i, c) in source.char_indices() {
-            if c == '\n' {
-                line_starts.push(i + 1);
-            }
-        }
-
-        line_starts
+// Logic for detecting error type
+fn detect_error_type(text: &str) -> Option<LexicalErrorType> {
+    if text.starts_with('"') && !text.ends_with('"') {
+        return Some(LexicalErrorType::UnterminatedString);
     }
-
-    // Converts byte offset to line/column position
-    fn offset_to_position(&self, offset: usize) -> Position {
-        let line_idx = match self.line_starts.binary_search(&offset) {
-            Ok(idx) => idx,
-            Err(idx) => idx - 1,
-        };
-
-        let line = line_idx + 1;
-        let column = offset - self.line_starts[line_idx] + 1;
-
-        Position { line, column }
+    if text.contains(|c: char| !c.is_ascii()) {
+        return Some(LexicalErrorType::NonAsciiCharacters);
     }
-
-    pub fn categorize_lexical_error(&self, text: &str) -> String {
-        // Common lexical error patterns and their user-friendly descriptions
-        if text.starts_with('"') && !text.ends_with('"') {
-            return "Unterminated string literal".to_string();
-        }
-
-        if text.contains(|c: char| !c.is_ascii()) {
-            return "Contains non-ASCII characters".to_string();
-        }
-
-        if text.starts_with(|c: char| c.is_numeric()) && text.contains(|c: char| c.is_alphabetic())
-        {
-            return "Identifier cannot start with a number".to_string();
-        }
-
-        if text.len() > 14 && text.chars().all(|c| c.is_alphanumeric() || c == '_') {
-            return "Identifier too long (max 14 characters)".to_string();
-        }
-
-        if text.contains("__") {
-            return "Identifier cannot contain consecutive underscores".to_string();
-        }
-
+    if text.len() > 14 && text.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        return Some(LexicalErrorType::IdentifierTooLong);
+    }
+    if text.contains("__") {
+        return Some(LexicalErrorType::ConsecutiveUnderscores);
+    }
+    if text.ends_with("_") {
+        return Some(LexicalErrorType::TrailingUnderscore);
+    }
+    if text.starts_with(|c: char| c.is_numeric()) && text.contains(|c: char| c.is_alphabetic()) {
+        return Some(LexicalErrorType::IdentifierStartsWithNumber);
+    }
+    if text.chars().all(|c: char| c.is_numeric() || c == '+' || c == '-') {
         if let Ok(num) = text.parse::<i32>() {
             if !(-32768..=32767).contains(&num) {
-                return "Integer literal out of range".to_string();
+                return Some(LexicalErrorType::IntegerOutOfRange);
             }
         }
-
-        "Invalid token".to_string()
     }
+    None
 }
 
-// Iterator implementation to generate tokens with position data
-impl Iterator for Lexer<'_> {
-    type Item = TokenWithPosition;
+pub fn tokenize(source: &str) -> (Vec<TokenWithMetaData>, Vec<LexicalError>) {
+    let mut lexer = Token::lexer(source);
+    let mut valid_tokens = Vec::new();
+    let mut errors = Vec::new();
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let token_result = self.logos_lexer.next();
+    while let Some(valid_result) = lexer.next() {
+        let span = lexer.span();
+        let value = lexer.slice().to_string();
+        let (line, column) = byte_offset_to_position(source, span.start);
 
-        token_result.as_ref()?;
-
-        let span = self.logos_lexer.span();
-        let position = self.offset_to_position(span.start);
-        let token_text = self.logos_lexer.slice().to_string();
-
-        let token = match token_result.unwrap() {
-            Ok(t) => t,
-            Err(_) => Token::Error,
+        match valid_result {
+            Ok(kind) => {
+                valid_tokens.push(TokenWithMetaData {
+                    kind,
+                    value,
+                    line,
+                    column,
+                    span,
+                });
+            },
+            Err(_) => {
+                let error_type = detect_error_type(&value);
+                errors.push(LexicalError {
+                    invalid_token: TokenWithMetaData {
+                        kind: Token::Error,
+                        value: value.clone(),
+                        line,
+                        column,
+                        span,
+                    },
+                    error_type: error_type.unwrap_or(LexicalErrorType::InvalidToken), // Default to InvalidToken if no specific error
+                });
+            },
         };
-
-        let token_with_pos = TokenWithPosition {
-            token,
-            text: token_text,
-            position,
-            span,
-        };
-
-        Some(token_with_pos)
     }
+
+    (valid_tokens, errors)
 }

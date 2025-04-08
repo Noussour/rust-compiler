@@ -4,6 +4,7 @@ use std::fmt;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Token {
+    #[logos(skip r"[ \t\n\f]+")] // Skip all whitespace characters
     // Language keywords
     #[token("MainPrgm")]
     MainPrgm,
@@ -109,43 +110,16 @@ pub enum Token {
     Not,
 
     // Literals
-    #[regex("(\\([+-][0-9]+\\))|([0-9]+)", |lex| {
-        let s = lex.slice();
-        let parsed: Option<i32> = if s.starts_with('(') {
-            s[1..s.len()-1].parse().ok()
-        } else {
-            s.parse().ok()
-        };
-        
-        // Only accept values in i16 range
-        parsed.filter(|&val| (-32768..=32767).contains(&val))
-    })]
+    #[regex("(\\([+-][0-9]+\\))|([0-9]+)", parse_int_literal)]
     IntLiteral(i32),
 
-    #[regex("(\\([+-][0-9]+\\.[0-9]+\\))|([0-9]+\\.[0-9]+)", |lex| {
-        let s = lex.slice();
-        if s.starts_with('(') {
-            s[1..s.len()-1].parse().ok()
-        } else {
-            s.parse().ok()
-        }
-    })]
+    #[regex("(\\([+-][0-9]+\\.[0-9]+\\))|([0-9]+\\.[0-9]+)", parse_float_literal)]
     FloatLiteral(f32),
 
-    #[regex("\"[^\"]*\"", |lex| {
-        let s = lex.slice();
-        Some(s[1..s.len()-1].to_string())
-    })]
+    #[regex("\"[^\"]*\"", parse_string_literal)]
     StringLiteral(String),
 
-    #[regex("[a-zA-Z][a-z0-9_]*", |lex| {
-        let s = lex.slice();
-        if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") {
-            Some(s.to_string())
-        } else {
-            None
-        }
-    })]
+    #[regex("[a-zA-Z][a-z0-9_]*", parse_identifier)]
     Identifier(String),
 
     // Ignored tokens
@@ -153,8 +127,6 @@ pub enum Token {
     #[regex("\\{--([^-]|(-[^-]))*--\\}", logos::skip)]
     Comment,
 
-    #[regex(r"[ \t\n\r]+", logos::skip)]
-    Whitespace,
 
     Error,
 }
@@ -168,5 +140,41 @@ impl fmt::Display for Token {
             Token::StringLiteral(s) => write!(f, "StringLiteral(\"{}\")", s),
             _ => write!(f, "{:?}", self),
         }
+    }
+}
+
+
+fn parse_int_literal(lex: &mut logos::Lexer<Token>) -> Option<i32> {
+    let s = lex.slice();
+    let parsed: Option<i32> = if s.starts_with('(') {
+        s[1..s.len()-1].parse().ok()
+    } else {
+        s.parse().ok()
+    };
+    
+    // Only accept values in i16 range
+    parsed.filter(|&val| (-32768..=32767).contains(&val))
+}
+
+fn parse_float_literal(lex: &mut logos::Lexer<Token>) -> Option<f32> {
+    let s = lex.slice();
+    if s.starts_with('(') {
+        s[1..s.len()-1].parse().ok()
+    } else {
+        s.parse().ok()
+    }
+}
+
+fn parse_string_literal(lex: &mut logos::Lexer<Token>) -> Option<String> {
+    let s = lex.slice();
+    Some(s[1..s.len()-1].to_string())
+}
+
+fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
+    let s = lex.slice();
+    if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") {
+        Some(s.to_string())
+    } else {
+        None
     }
 }

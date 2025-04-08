@@ -1,5 +1,5 @@
 use crate::error_reporter::ErrorReporter;
-use crate::lexer::{lexer_core::TokenWithPosition, token::Token, Lexer};
+use crate::lexer::{lexer_core::{TokenWithMetaData, tokenize}, token::Token};
 use crate::parser::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
 use colored::*;
@@ -33,20 +33,10 @@ impl Compiler {
 
         // STEP 1: Lexical Analysis
         // Tokenize the source code and capture lexical errors
-        let tokens = self.tokenize();
+        let (valid_tokens, errors) = tokenize(&self.source_code);
 
         // Check for lexical errors
-        let mut has_lexical_errors = false;
-        for token in &tokens {
-            if let Token::Error = &token.token {
-                self.error_reporter.add_lexical_error(
-                    &token.text,
-                    token.position.line,
-                    token.position.column,
-                );
-                has_lexical_errors = true;
-            }
-        }
+        let mut has_lexical_errors = !errors.is_empty();
 
         // If lexical errors, report and exit early
         if has_lexical_errors {
@@ -55,7 +45,7 @@ impl Compiler {
             return Err(1);
         }
 
-        self.print_tokens(&tokens);
+        self.print_tokens(&valid_tokens);
 
         // STEP 2: Syntax Analysis
         println!("\n{}", "Parsing:".bold().underline());
@@ -134,13 +124,7 @@ impl Compiler {
         println!("{}\n", self.source_code);
     }
 
-    fn tokenize(&self) -> Vec<TokenWithPosition> {
-        let lexer = Lexer::new(&self.source_code);
-        let tokens: Vec<_> = lexer.collect();
-        tokens
-    }
-
-    fn print_tokens(&self, tokens: &[TokenWithPosition]) {
+    fn print_tokens(&self, tokens: &[TokenWithMetaData]) {
         println!("{}", "Tokens:".bold().underline());
         for token_with_pos in tokens {
             let token_name = format!("{:?}", token_with_pos.token).green();
