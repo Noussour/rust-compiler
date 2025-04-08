@@ -6,7 +6,10 @@ mod grammar_parser {
 use crate::lexer::lexer_core::TokenWithMetaData;
 use crate::lexer::token::Token;
 use crate::parser::ast::Program;
-use crate::parser::error::SyntaxError;
+use crate::parser::error::{
+    SyntaxError,
+    convert_lalrpop_error,
+};
 
 
 // Add a new function to generate LALRPOP compatible tokens
@@ -21,11 +24,8 @@ pub fn tokenize_for_lalrpop(tokens: Vec<TokenWithMetaData>) -> Vec<Result<(usize
 
 
 /// Parses tokens into an AST
-///
 /// Takes the lexer's tokens and turns them into a proper syntax tree
-/// that represents our MiniSoft program
 pub fn parse(tokens: Vec<TokenWithMetaData>) -> Result<Program, SyntaxError> {
-    // Need to reformat tokens for LALRPOP
     // Convert tokens to LALRPOP format
      let lalrpop_tokens = tokenize_for_lalrpop(tokens);
     
@@ -34,6 +34,14 @@ pub fn parse(tokens: Vec<TokenWithMetaData>) -> Result<Program, SyntaxError> {
      
     match grammar_parser::ProgramParser::new().parse(token_iter) {
         Ok(program) => Ok(program),
-        Err(e) => Err(SyntaxError::from(e)),
+        Err(e) => Err(convert_lalrpop_error(e)),
     }
+}
+
+/// One-step parsing from source to AST
+/// Handles both lexing and parsing in a single function
+pub fn parse_source(source: &str) -> Result<Program, SyntaxError> {
+    // Tokenize the source code
+    let (tokens, _) = crate::lexer::lexer_core::tokenize(source);
+    parse(tokens)
 }

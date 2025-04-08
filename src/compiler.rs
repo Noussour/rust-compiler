@@ -1,6 +1,6 @@
 use crate::error_reporter::ErrorReporter;
-use crate::lexer::{lexer_core::{TokenWithMetaData, tokenize}, token::Token};
-use crate::parser::parse;
+use crate::lexer::lexer_core::{TokenWithMetaData, tokenize};
+use crate::parser::parser_core::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
 use colored::*;
 use std::collections::HashMap;
@@ -36,11 +36,14 @@ impl Compiler {
         let (valid_tokens, errors) = tokenize(&self.source_code);
 
         // Check for lexical errors
-        let mut has_lexical_errors = !errors.is_empty();
+        let has_lexical_errors = !errors.is_empty();
 
         // If lexical errors, report and exit early
         if has_lexical_errors {
             println!("{}", "Lexical errors detected".red().bold());
+            for error in errors {
+                eprintln!("{}", error.to_string().red().bold());
+            }
             self.error_reporter.report_errors();
             return Err(1);
         }
@@ -51,7 +54,7 @@ impl Compiler {
         println!("\n{}", "Parsing:".bold().underline());
 
         // Parse tokens into an AST
-        match parse(tokens) {
+        match parse(valid_tokens) {
             Ok(program) => {
                 println!("{}", "AST:".green());
                 println!("{:#?}", program);
@@ -70,7 +73,7 @@ impl Compiler {
                 if !semantic_errors.is_empty() {
                     println!("{}", "Semantic Errors Detected".red().bold());
                     for error in semantic_errors {
-                        self.error_reporter.add_semantic_error(error);
+                        // self.error_reporter.add_error(kind, message, line, column);
                     }
                 } else {
                     println!("{}", "No semantic errors found".green());
@@ -105,7 +108,7 @@ impl Compiler {
             }
             Err(parse_error) => {
                 println!("{}", "Parser Error:".red().bold());
-                self.error_reporter.add_parse_error(&parse_error);
+                // self.error_reporter.add_parse_error(&parse_error);
             }
         }
 
@@ -127,11 +130,11 @@ impl Compiler {
     fn print_tokens(&self, tokens: &[TokenWithMetaData]) {
         println!("{}", "Tokens:".bold().underline());
         for token_with_pos in tokens {
-            let token_name = format!("{:?}", token_with_pos.token).green();
-            let token_value = token_with_pos.text.yellow();
+            let token_name = format!("{:?}", token_with_pos.kind).green();
+            let token_value = token_with_pos.value.yellow();
             let position = format!(
                 "Line {}, Col {}",
-                token_with_pos.position.line, token_with_pos.position.column
+                token_with_pos.line, token_with_pos.column
             )
             .blue();
 

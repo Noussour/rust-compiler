@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(extras = Line)]
 pub enum Token {
-    #[logos(skip r"[ \t\f]+")] // Skip all whitespace characters
+    #[regex(r"[ \t\f\r]+", logos::skip)]
     #[regex(r"\n", newline_callback)]
 
     // Language keywords
@@ -197,6 +197,6 @@ impl Default for Line {
 
 fn newline_callback(lex: &mut logos::Lexer<Token>) -> logos::Skip {
     lex.extras.line_number += 1;
-    lex.extras.line_start = lex.span().end + 1;
+    lex.extras.line_start = lex.span().end;
     logos::Skip
 }

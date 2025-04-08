@@ -47,29 +47,26 @@ impl LexicalError {
 }
 
 
-// Implement Display for LexicalErrorType
-impl fmt::Display for LexicalErrorType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LexicalErrorType::UnterminatedString => write!(f, "Unterminated string literal"),
-            LexicalErrorType::NonAsciiCharacters => write!(f, "Non-ASCII characters found"),
-            LexicalErrorType::IdentifierTooLong => write!(f, "Identifier is too long"),
-            LexicalErrorType::ConsecutiveUnderscores => write!(f, "Consecutive underscores are not allowed"),
-            LexicalErrorType::TrailingUnderscore => write!(f, "Trailing underscore is not allowed"),
-            LexicalErrorType::IdentifierStartsWithNumber => write!(f, "Identifier starts with a number"),
-            LexicalErrorType::IntegerOutOfRange => write!(f, "Integer is out of range"),
-            LexicalErrorType::InvalidToken => write!(f, "Invalid token"),
-        }
-    }
-}
 
 // Implement Display for LexicalError
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Lexical error: {} in token {:?}",
-            self.error_type, self.invalid_token
+            "Lexical error: {:?} at line {}, column {}: {}",
+            match self.error_type {
+                LexicalErrorType::UnterminatedString => "Unterminated string",
+                LexicalErrorType::NonAsciiCharacters => "Non-ASCII characters",
+                LexicalErrorType::IdentifierTooLong => "Identifier too long",
+                LexicalErrorType::ConsecutiveUnderscores => "Consecutive underscores",
+                LexicalErrorType::TrailingUnderscore => "Trailing underscore",
+                LexicalErrorType::IdentifierStartsWithNumber => "Identifier starts with number",
+                LexicalErrorType::IntegerOutOfRange => "Integer out of range",
+                LexicalErrorType::InvalidToken => "Invalid token",
+            },
+            self.invalid_token.line,
+            self.invalid_token.column,
+            self.invalid_token.value
         )
     }
 }

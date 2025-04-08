@@ -3,7 +3,7 @@ mod parser_tests {
     use rust_compiler::parser::ast::{
         Declaration, Expression, Literal, Operator, Program, Statement, Type,
     };
-    use rust_compiler::parser::parse_source;
+    use rust_compiler::parser::parser_core::parse_source;
 
     /// Helper function to parse a source string and return the AST
     fn parse_test(source: &str) -> Program {
@@ -185,8 +185,8 @@ mod parser_tests {
         let source = "
             MainPrgm test ;
             Var
-            @define Const PI : Float = 3.14 ;
-            @define Const MAX : Int = 100 ;
+            @define Const Pi : Float = 3.14 ;
+            @define Const Max : Int = 100 ;
             BeginPg { } EndPg ;
         ";
 
@@ -196,7 +196,7 @@ mod parser_tests {
 
         match &program.declarations[0] {
             Declaration::Constant(name, typ, value) => {
-                assert_eq!(name, "PI");
+                assert_eq!(name, "Pi");
                 assert!(matches!(typ, Type::Float));
                 assert!(matches!(value, Literal::Float(v) if *v == 3.14));
             }
@@ -205,7 +205,7 @@ mod parser_tests {
 
         match &program.declarations[1] {
             Declaration::Constant(name, typ, value) => {
-                assert_eq!(name, "MAX");
+                assert_eq!(name, "Max");
                 assert!(matches!(typ, Type::Int));
                 assert!(matches!(value, Literal::Int(v) if *v == 100));
             }
