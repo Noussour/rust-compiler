@@ -3,8 +3,11 @@ use logos::Logos;
 use std::fmt;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(extras = Line)]
 pub enum Token {
-    #[logos(skip r"[ \t\n\f]+")] // Skip all whitespace characters
+    #[logos(skip r"[ \t\f]+")] // Skip all whitespace characters
+    #[regex(r"\n", newline_callback)]
+
     // Language keywords
     #[token("MainPrgm")]
     MainPrgm,
@@ -177,4 +180,23 @@ fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
     } else {
         None
     }
+}
+pub struct Line {
+    pub line_number: usize,
+    pub line_start: usize,
+}
+
+impl Default for Line {
+    fn default() -> Self {
+        Line {
+            line_number: 1, // Start at line 1
+            line_start: 0,
+        }
+    }
+}
+
+fn newline_callback(lex: &mut logos::Lexer<Token>) -> logos::Skip {
+    lex.extras.line_number += 1;
+    lex.extras.line_start = lex.span().end + 1;
+    logos::Skip
 }

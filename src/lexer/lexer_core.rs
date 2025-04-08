@@ -1,4 +1,4 @@
-use logos::Logos;
+use logos::{Lexer, Logos};
 use crate::lexer::token::Token;
 use crate::lexer::error::LexicalErrorType;
 use std::ops::Range;
@@ -18,26 +18,9 @@ pub struct LexicalError {
     pub error_type: LexicalErrorType,
 }
 
-fn byte_offset_to_position(src: &str, byte_offset: usize) -> (usize, usize) {
-    let mut line = 1;
-    let mut col = 1;
-    let mut count = 0;
-
-    for ch in src.chars() {
-        if count == byte_offset {
-            break;
-        }
-
-        if ch == '\n' {
-            line += 1;
-            col = 1;
-        } else {
-            col += 1;
-        }
-
-        count += ch.len_utf8();
-    }
-
+fn get_position<'a>(lexer: &Lexer<'a, Token>, byte_offset: usize) -> (usize, usize) {
+    let line = lexer.extras.line_number;
+    let col = byte_offset - lexer.extras.line_start;
     (line, col)
 }
 
@@ -79,7 +62,7 @@ pub fn tokenize(source: &str) -> (Vec<TokenWithMetaData>, Vec<LexicalError>) {
     while let Some(valid_result) = lexer.next() {
         let span = lexer.span();
         let value = lexer.slice().to_string();
-        let (line, column) = byte_offset_to_position(source, span.start);
+        let (line, column) = get_position(&lexer, span.start);
 
         match valid_result {
             Ok(kind) => {
