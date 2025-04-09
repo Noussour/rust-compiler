@@ -10,6 +10,7 @@ pub enum LexicalErrorType {
     UnterminatedString,
     NonAsciiCharacters,
     IdentifierTooLong ,
+    InvalidIdentifier,
     ConsecutiveUnderscores,
     TrailingUnderscore,
     IdentifierStartsWithNumber,
@@ -40,6 +41,8 @@ impl LexicalError {
             LexicalErrorType::TrailingUnderscore
         } else if token.value.starts_with(|c: char| c.is_numeric()) {
             LexicalErrorType::IdentifierStartsWithNumber
+        } else if token.value.chars().skip(1).any(|c| c.is_ascii_uppercase()) {
+            LexicalErrorType::InvalidIdentifier
         } else {
             LexicalErrorType::InvalidToken
         };
@@ -117,6 +120,9 @@ impl ErrorReporter for LexicalError {
                 let fixed = format!("_{}", self.invalid_token);
                 Some(format!("Identifiers can't start with numbers. Try: '{}'", fixed))
             },
+            LexicalErrorType::InvalidIdentifier => {
+                Some("Identifiers must not contain uppercase letters after the first character".to_string())
+            },
             LexicalErrorType::IntegerOutOfRange => {
                 Some("Integer literals must be within the valid range".to_string())
             },
@@ -148,6 +154,8 @@ impl LexicalError {
                 format!("Consecutive underscores in identifier '{}'", self.invalid_token),
             LexicalErrorType::TrailingUnderscore => 
                 format!("Identifier '{}' ends with underscore", self.invalid_token),
+            LexicalErrorType::InvalidIdentifier =>
+                format!("Invalid identifier '{}'", self.invalid_token),
             LexicalErrorType::IdentifierStartsWithNumber => 
                 format!("Identifier '{}' starts with a number", self.invalid_token),
             LexicalErrorType::IntegerOutOfRange => 

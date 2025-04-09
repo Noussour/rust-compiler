@@ -122,7 +122,7 @@ pub enum Token {
     #[regex("\"[^\"]*\"", parse_string_literal)]
     StringLiteral(String),
 
-    #[regex("[a-zA-Z][a-z0-9_]*", parse_identifier)]
+    #[regex("[a-zA-Z][a-zA-Z0-9_]*", parse_identifier)]
     Identifier(String),
 
     // Ignored tokens
@@ -184,6 +184,7 @@ fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
         None
     }
 }
+
 pub struct Line {
     pub line_number: usize,
     pub line_start: usize,
