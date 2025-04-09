@@ -57,6 +57,7 @@ impl SemanticAnalyzer {
                                     found: format!("{}", rhs_type),
                                     line,
                                     column,
+                                    context: None,
                                 });
                             }
                         }
@@ -116,6 +117,7 @@ impl SemanticAnalyzer {
                                             found: format!("{}", idx_type),
                                             line: idx_line,
                                             column: idx_col,
+                                            context: None,
                                         });
                                         return;
                                     }
@@ -130,6 +132,7 @@ impl SemanticAnalyzer {
                                             found: format!("{}", rhs_type),
                                             line: array_line,
                                             column: array_col,
+                                            context: None,
                                         });
                                     }
                                 }
@@ -230,6 +233,7 @@ impl SemanticAnalyzer {
                     found: format!("{}", symbol.symbol_type),
                     line: var_line,
                     column: var_col,
+                    context: None,
                 });
             }
         }
@@ -253,6 +257,7 @@ impl SemanticAnalyzer {
                     found: format!("{}", from_type),
                     line: from_line,
                     column: from_col,
+                    context: None,
                 });
             }
         }
@@ -272,6 +277,7 @@ impl SemanticAnalyzer {
                     found: format!("{}", to_type),
                     line: to_line,
                     column: to_col,
+                    context: None,
                 });
             }
         }
@@ -291,6 +297,7 @@ impl SemanticAnalyzer {
                     found: format!("{}", step_type),
                     line: step_line,
                     column: step_col,
+                    context: None,
                 });
             }
         }
@@ -382,6 +389,7 @@ impl SemanticAnalyzer {
                                     found: format!("{}", idx_type),
                                     line,
                                     column,
+                                    context: None,
                                 });
                             }
                         }

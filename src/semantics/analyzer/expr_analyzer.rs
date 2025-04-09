@@ -68,6 +68,7 @@ impl SemanticAnalyzer {
                                     found: format!("{}", idx_type),
                                     line,
                                     column,
+                                    context: Some("array index".to_string()),
                                 });
                                 return None;
                             }
@@ -166,6 +167,7 @@ impl SemanticAnalyzer {
                                 found: format!("{}", right_type),
                                 line,
                                 column,
+                                context: Some("arithmetic".to_string()),
                             });
                             None
                         }
@@ -188,6 +190,7 @@ impl SemanticAnalyzer {
                                 found: format!("{}", right_type),
                                 line,
                                 column,
+                                context: Some("comparison".to_string()),
                             });
                             None
                         }
@@ -202,6 +205,7 @@ impl SemanticAnalyzer {
                                 found: format!("{}, {}", left_type, right_type),
                                 line,
                                 column,
+                                context: Some("logical".to_string()),
                             });
                             return None;
                         }
@@ -254,6 +258,7 @@ impl SemanticAnalyzer {
                                 found: format!("{}", expr_type),
                                 line,
                                 column,
+                                context: Some("logical".to_string()),
                             });
                             return None;
                         }

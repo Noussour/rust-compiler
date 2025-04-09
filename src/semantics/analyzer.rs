@@ -124,8 +124,9 @@ impl SemanticAnalyzer {
                 found,
                 line,
                 column,
+                context,
             } => {
-                format!("type_mismatch:{}:{}:{}:{}", expected, found, line, column)
+                format!("type_mismatch:{}:{}:{}:{}:{}", expected, found, line, column, context.as_ref().unwrap_or(&"".to_string()))
             }
             SemanticError::UndeclaredIdentifier { name, line, column } => {
                 format!("undeclared:{}:{}:{}", name, line, column)

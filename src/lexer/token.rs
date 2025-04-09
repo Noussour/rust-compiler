@@ -175,7 +175,10 @@ fn parse_string_literal(lex: &mut logos::Lexer<Token>) -> Option<String> {
 
 fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
     let s = lex.slice();
-    if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") {
+    // Check if identifier contains uppercase letters (after the first character)
+    let has_uppercase_after_first = s.chars().skip(1).any(|c| c.is_ascii_uppercase());
+    
+    if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") && !has_uppercase_after_first {
         Some(s.to_string())
     } else {
         None

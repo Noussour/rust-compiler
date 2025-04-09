@@ -98,22 +98,16 @@ fn perform_semantic_analysis(&mut self, program: &crate::parser::ast::Program) -
     // Check for semantic errors
     let semantic_errors = analyzer.get_errors();
     if !semantic_errors.is_empty() {
-        // self.report_semantic_errors(&semantic_errors);
+        println!("{}", "Semantic Errors Detected:".red().bold());
+        ErrorReportFormatter::print_errors(&semantic_errors, Some(&self.source_code));
         Err(1)
     } else {
-        println!("{}", "No semantic errors found".green());
+        println!("{}", "analysis completed successfully.".green());
         self.print_symbol_table(&analyzer);
         Ok(())
     }
 }
 
-// fn report_semantic_errors(&mut self, errors: &[/* Replace with actual type */]) {
-//     println!("{}", "Semantic Errors Detected".red().bold());
-//     for error in errors {
-//         // self.error_reporter.add_error(kind, message, line, column);
-//         // Note: This would need to be implemented based on your error type
-//     }
-// }
 
 fn print_symbol_table(&self, analyzer: &SemanticAnalyzer) {
     println!("\n{}", "Symbol Table:".bold().underline());

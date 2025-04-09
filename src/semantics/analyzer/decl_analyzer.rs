@@ -91,6 +91,7 @@ impl SemanticAnalyzer {
                             found: "String".to_string(),
                             line,
                             column,
+                            context: Some("constant".to_string()),
                         });
                         return;
                     }
@@ -111,6 +112,7 @@ impl SemanticAnalyzer {
                         found: format!("{}", value_type),
                         line,
                         column,
+                        context: Some("constant".to_string()),
                     });
                     return;
                 }
@@ -141,6 +143,7 @@ impl SemanticAnalyzer {
                             found: format!("{}", expr_type),
                             line,
                             column,
+                            context: Some("assignment".to_string()),
                         });
                     }
                 }
@@ -205,6 +208,7 @@ impl SemanticAnalyzer {
                                 found: format!("{}", value_type),
                                 line,
                                 column,
+                                context: Some("array initializer".to_string()),
                             });
                         }
                     }
