@@ -1,4 +1,4 @@
-use crate::error_reporter::ErrorReporter;
+use crate::error_reporter::ErrorReportFormatter;
 use crate::lexer::lexer_core::{TokenWithMetaData, tokenize};
 use crate::parser::parser_core::parse;
 use crate::semantics::{SemanticAnalyzer, SymbolKind};
@@ -9,118 +9,139 @@ use std::fs;
 pub struct Compiler {
     source_code: String,
     file_path: String,
-    error_reporter: ErrorReporter,
 }
 
 impl Compiler {
     pub fn new(file_path: &str) -> Result<Self, String> {
         match fs::read_to_string(file_path) {
             Ok(content) => {
-                let error_reporter = ErrorReporter::new(&content, file_path);
                 Ok(Self {
                     source_code: content,
                     file_path: file_path.to_string(),
-                    error_reporter,
                 })
             }
             Err(e) => Err(format!("Error reading file '{}': {}", file_path, e)),
         }
     }
 
-    pub fn run(&mut self) -> Result<(), i32> {
-        println!("Compiling file: {}", self.file_path);
-        self.print_source_code();
+pub fn run(&mut self) -> Result<(), i32> {
+    println!("Compiling file: {}", self.file_path);
+    self.print_source_code();
 
-        // STEP 1: Lexical Analysis
-        // Tokenize the source code and capture lexical errors
-        let (valid_tokens, errors) = tokenize(&self.source_code);
+    // Step 1: Lexical Analysis
+    let tokens = match self.perform_lexical_analysis() {
+        Ok(tokens) => {
+            tokens
+        },
+        Err(exit_code) => return Err(exit_code)
+    };
 
-        // Check for lexical errors
-        let has_lexical_errors = !errors.is_empty();
+    // Step 2: Syntax Analysis
+    let ast = match self.perform_syntax_analysis(tokens) {
+        Ok(ast) => ast,
+        Err(exit_code) => return Err(exit_code),
+    };
 
-        // If lexical errors, report and exit early
-        if has_lexical_errors {
-            println!("{}", "Lexical errors detected".red().bold());
-            for error in errors {
-                eprintln!("{}", error.to_string().red().bold());
-            }
-            self.error_reporter.report_errors();
-            return Err(1);
+    // Step 3: Semantic Analysis
+    if let Err(exit_code) = self.perform_semantic_analysis(&ast) {
+        return Err(exit_code);
+    }
+    Ok(())
+}
+
+fn perform_lexical_analysis(&mut self) -> Result<Vec<TokenWithMetaData>, i32> {
+    println!("{}: ", "Lexical Analysis".bold().underline());
+    // Tokenize the source code and capture lexical errors
+    let (valid_tokens, errors) = tokenize(&self.source_code);
+
+    // Check for lexical errors
+    if !errors.is_empty() {
+        println!("{}", "Lexical Errors Detected:".red().bold());
+        ErrorReportFormatter::print_errors(&errors, Some(&self.source_code));
+        return Err(1);
+    }
+
+    self.print_tokens(&valid_tokens);
+    println!("{}", "Lexical analysis completed successfully.".green().bold());
+    Ok(valid_tokens)
+}
+
+fn perform_syntax_analysis(&mut self, tokens: Vec<TokenWithMetaData>) -> Result<crate::parser::ast::Program, i32> {
+    println!("\n{} :", "Syntax Analysis".bold().underline());
+    println!("{} :", "Parsing".bold().underline());
+
+    // Parse tokens into an AST
+    match parse(tokens, &self.source_code) {
+        Ok(program) => {
+            println!("{}", "AST:".green());
+            println!("{:#?}", program);
+            println!("{}", "Parsing completed successfully.".green().bold());
+            Ok(program)
         }
-
-        self.print_tokens(&valid_tokens);
-
-        // STEP 2: Syntax Analysis
-        println!("\n{}", "Parsing:".bold().underline());
-
-        // Parse tokens into an AST
-        match parse(valid_tokens) {
-            Ok(program) => {
-                println!("{}", "AST:".green());
-                println!("{:#?}", program);
-
-                // STEP 3: Semantic Analysis
-                println!("\n{}", "Semantic Analysis:".bold().underline());
-
-                // Build position map for better error reporting
-                let position_map = self.build_position_map(&program);
-
-                let mut analyzer = SemanticAnalyzer::new_with_positions(position_map);
-                analyzer.analyze(&program);
-
-                // Check for semantic errors
-                let semantic_errors = analyzer.get_errors();
-                if !semantic_errors.is_empty() {
-                    println!("{}", "Semantic Errors Detected".red().bold());
-                    for error in semantic_errors {
-                        // self.error_reporter.add_error(kind, message, line, column);
-                    }
-                } else {
-                    println!("{}", "No semantic errors found".green());
-
-                    // Display symbol table
-                    println!("\n{}", "Symbol Table:".bold().underline());
-                    let symbol_table = analyzer.get_symbol_table();
-                    for symbol in symbol_table.get_all() {
-                        let kind = match &symbol.kind {
-                            SymbolKind::Variable => "Variable".cyan(),
-                            SymbolKind::Constant => "Constant".yellow(),
-                            SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
-                        };
-
-                        let value = if let Some(val) = &symbol.value {
-                            format!("{:?}", val).green()
-                        } else {
-                            "<uninitialized>".dimmed()
-                        };
-
-                        println!(
-                            "{} {} {} = {} (line {}, col {})",
-                            kind,
-                            symbol.name.white(),
-                            format!("({})", symbol.symbol_type).blue(),
-                            value,
-                            symbol.line,
-                            symbol.column
-                        );
-                    }
-                }
-            }
-            Err(parse_error) => {
-                println!("{}", "Parser Error:".red().bold());
-                // self.error_reporter.add_parse_error(&parse_error);
-            }
-        }
-
-        // Final error reporting
-        if self.error_reporter.has_errors() {
-            self.error_reporter.report_errors();
-            Err(1) // Return error code
-        } else {
-            println!("{}", "Compilation successful!".green().bold());
-            Ok(()) // Successful compilation
+        Err(parse_error) => {
+            println!("{}", "Parser Error Detected:".red().bold());
+            ErrorReportFormatter::print_errors(&[parse_error], Some(&self.source_code));
+            return  Err(1)
         }
     }
+}
+
+fn perform_semantic_analysis(&mut self, program: &crate::parser::ast::Program) -> Result<(), i32> {
+    println!("\n{}", "Semantic Analysis:".bold().underline());
+
+    // Build position map for better error reporting
+    let position_map = self.build_position_map(program);
+
+    let mut analyzer = SemanticAnalyzer::new_with_positions(position_map);
+    analyzer.analyze(program);
+
+    // Check for semantic errors
+    let semantic_errors = analyzer.get_errors();
+    if !semantic_errors.is_empty() {
+        // self.report_semantic_errors(&semantic_errors);
+        Err(1)
+    } else {
+        println!("{}", "No semantic errors found".green());
+        self.print_symbol_table(&analyzer);
+        Ok(())
+    }
+}
+
+// fn report_semantic_errors(&mut self, errors: &[/* Replace with actual type */]) {
+//     println!("{}", "Semantic Errors Detected".red().bold());
+//     for error in errors {
+//         // self.error_reporter.add_error(kind, message, line, column);
+//         // Note: This would need to be implemented based on your error type
+//     }
+// }
+
+fn print_symbol_table(&self, analyzer: &SemanticAnalyzer) {
+    println!("\n{}", "Symbol Table:".bold().underline());
+    let symbol_table = analyzer.get_symbol_table();
+    for symbol in symbol_table.get_all() {
+        let kind = match &symbol.kind {
+            SymbolKind::Variable => "Variable".cyan(),
+            SymbolKind::Constant => "Constant".yellow(),
+            SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
+        };
+
+        let value = if let Some(val) = &symbol.value {
+            format!("{:?}", val).green()
+        } else {
+            "<uninitialized>".dimmed()
+        };
+
+        println!(
+            "{} {} {} = {} (line {}, col {})",
+            kind,
+            symbol.name.white(),
+            format!("({})", symbol.symbol_type).blue(),
+            value,
+            symbol.line,
+            symbol.column
+        );
+    }
+}
 
     fn print_source_code(&self) {
         println!("{}", "Source code:".bold().underline());
