@@ -1,3 +1,5 @@
+// This file uses LALRPOP to define the parser grammar for our language.
+
 use std::str::FromStr;
 use crate::lexer::token::Token;
 use crate::parser::ast::{Program, Declaration, Statement, Expression, Operator, UnaryOperator, Type, Literal};
@@ -78,18 +80,19 @@ extern {
     }
 }
 
-// Program is the starting rule
+// Program rule (entry point) - defines the main structure (name, declarations, statements).
 pub Program: Program = {
-    "MainPrgm" <name:Id> ";" "Var" <decls:Declaration*> "BeginPg" "{" <stmts:Statement*> "}" "EndPg" ";" => {
+    "MainPrgm" <name:Id> ";" "Var" <decls:Declaration*> "BeginPg" "{" <stmts:Statement*> "}" "EndPg" ";" =>  {
         Program {
             name,
             declarations: decls,
             statements: stmts,
         }
-    }
+    },
+    // Add this line to make a complete program that consumes all input
 };
 
-// Declaration rules
+// Declaration rules: Manage different ways to declare variables, arrays, and constants.
 Declaration: Declaration = {
     "let" <names:IdList> ":" <ty:TypeSpec> ";" => {
         Declaration::Variable(names, ty)
@@ -108,13 +111,13 @@ Declaration: Declaration = {
     }
 };
 
-// Type specification
+// Type specification - specifies possible data types like Int and Float.
 TypeSpec: Type = {
     "Int" => Type::Int,
     "Float" => Type::Float,
 };
 
-// Statement rules
+// Statement rules - define different control flow and I/O statements.
 Statement: Statement = {
     <target:LValue> ":=" <value:Expression> ";" => {
         Statement::Assignment(target, value)
@@ -137,16 +140,17 @@ Statement: Statement = {
     "output" "(" <exprs:ExprList> ")" ";" => {
         Statement::Output(exprs)
     },
-    ";" => Statement::Empty,
+    // ";" => Statement::Empty,
 };
 
-// Left value (assignment target)
+// LValue rule: Determines valid left-hand side targets in assignments, like identifiers or array elements.
 LValue: Expression = {
     <id:Id> => Expression::Identifier(id),
     <id:Id> "[" <idx:Expression> "]" => Expression::ArrayAccess(id, Box::new(idx)),
 };
 
-// Expression grammar with operator precedence
+// Expression rules: Structured by precedence (logical → comparison → additive → multiplicative → unary).
+// This ensures correct parsing of operators with different priorities.
 Expression: Expression = {
     LogicalExpr,
 };
@@ -217,7 +221,7 @@ PrimaryExpr: Expression = {
     "(" <expr:Expression> ")" => expr,
 };
 
-// Literal values
+// Literal values - parse integer, float, and string constants.
 LiteralValue: Literal = {
     <n:Int> => Literal::Int(n),
     <f:Float> => Literal::Float(f),
