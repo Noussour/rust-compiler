@@ -1,5 +1,5 @@
 use crate::parser::ast::{Expression, Literal, Statement, Type};
-use crate::semantics::analyzer::SemanticAnalyzer;
+use crate::semantics::analyzer_core::SemanticAnalyzer;
 use crate::semantics::error::SemanticError;
 use crate::semantics::symbol_table::SymbolKind;
 
@@ -7,6 +7,12 @@ impl SemanticAnalyzer {
     /// Analyzes a statement
     pub(crate) fn analyze_statement(&mut self, statement: &Statement) {
         match statement {
+            Statement::Block(statements) => {
+                // Analyze each statement in the block
+                for stmt in statements {
+                    self.analyze_statement(stmt);
+                }
+            }
             Statement::Assignment(lhs, rhs) => {
                 // First analyze the left-hand side (target)
                 match lhs {

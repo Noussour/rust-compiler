@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 use crate::lexer::token::Token;
-use crate::parser::ast::{Program, Declaration, Statement, Expression, Operator, UnaryOperator, Type, Literal};
+use crate::parser::ast::{Span, Located, Program, Declaration, Statement, Expression, Operator, UnaryOperator, Type, Literal};
 
 grammar<'input>;
 
@@ -44,10 +44,10 @@ extern {
         ":" => Token::Colon,
         "[" => Token::OpenBracket,
         "]" => Token::CloseBracket,
-        "{" => Token::OpenBrace,
-        "}" => Token::CloseBrace,
         "(" => Token::OpenParen,
         ")" => Token::CloseParen,
+        "{" => Token::OpenBrace,
+        "}" => Token::CloseBrace,
         
         // Assignment
         ":=" => Token::Assign,
@@ -81,33 +81,50 @@ extern {
 }
 
 // Program rule (entry point) - defines the main structure (name, declarations, statements).
-pub Program: Program = {
-    "MainPrgm" <name:Id> ";" "Var" <decls:Declaration*> "BeginPg" "{" <stmts:Statement*> "}" "EndPg" ";" =>  {
-        Program {
-            name,
-            declarations: decls,
-            statements: stmts,
+pub Program: Located<Program> = {
+    <l:@L> "MainPrgm" <name:Id> ";" "Var" <decls:Declaration*> "BeginPg" <stmts:Block> "EndPg" ";" <r:@R> =>  {
+        Located {
+            node: Program {
+                name,
+                declarations: decls.into_iter().map(|loc| loc.node).collect(),
+                statements: stmts.into_iter().map(|loc| loc.node).collect(),
+            },
+            span: Span { start: l, end: r },
         }
     },
-    // Add this line to make a complete program that consumes all input
 };
 
 // Declaration rules: Manage different ways to declare variables, arrays, and constants.
-Declaration: Declaration = {
-    "let" <names:IdList> ":" <ty:TypeSpec> ";" => {
-        Declaration::Variable(names, ty)
+Declaration: Located<Declaration> = {
+    <l:@L> "let" <names:IdList> ":" <ty:TypeSpec> ";" <r:@R> => {
+        Located {
+            node: Declaration::Variable(names, ty),
+            span: Span { start: l, end: r },
+        }
     },
-    "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" ";" => {
-        Declaration::Array(names, ty, size as usize)
+    <l:@L> "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" ";" <r:@R> => {
+        Located {
+            node: Declaration::Array(names, ty, size as usize),
+            span: Span { start: l, end: r },
+        }
     },
-    "let" <names:IdList> ":" <ty:TypeSpec> "=" <value:Expression> ";" => {
-        Declaration::VariableWithInit(names, ty, value)
+    <l:@L> "let" <names:IdList> ":" <ty:TypeSpec> "=" <value:Expression> ";" <r:@R> => {
+        Located {
+            node: Declaration::VariableWithInit(names, ty, value.node),
+            span: Span { start: l, end: r },
+        }
     },
-    "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" "=" "{" <values:ExprList> "}" ";" => {
-        Declaration::ArrayWithInit(names, ty, size as usize, values)
+    <l:@L> "let" <names:IdList> ":" "[" <ty:TypeSpec> ";" <size:Int> "]" "=" "{" <values:ExprList>"}" ";" <r:@R> => {
+        Located {
+            node: Declaration::ArrayWithInit(names, ty, size as usize, values.into_iter().map(|loc| loc.node).collect()),
+            span: Span { start: l, end: r },
+        }
     },
-    "@define" "Const" <name:Id> ":" <ty:TypeSpec> "=" <value:LiteralValue> ";" => {
-        Declaration::Constant(name, ty, value)
+    <l:@L> "@define" "Const" <name:Id> ":" <ty:TypeSpec> "=" <value:LiteralValue> ";" <r:@R> => {
+        Located {
+            node: Declaration::Constant(name, ty, value),
+            span: Span { start: l, end: r },
+        }
     }
 };
 
@@ -117,107 +134,194 @@ TypeSpec: Type = {
     "Float" => Type::Float,
 };
 
+Block: Vec<Located<Statement>> = {
+    "{" <stmts:Statement*> "}" => stmts,
+};
+
 // Statement rules - define different control flow and I/O statements.
-Statement: Statement = {
-    <target:LValue> ":=" <value:Expression> ";" => {
-        Statement::Assignment(target, value)
+Statement: Located<Statement> = {
+    <l:@L> <target:LValue> ":=" <value:Expression> ";" <r:@R> => {
+        Located {
+            node: Statement::Assignment(target.node, value.node),
+            span: Span { start: l, end: r },
+        }
     },
-    "if" "(" <cond:Expression> ")" "then" "{" <then_block:Statement*> "}" => {
-        Statement::IfThen(cond, then_block)
+    <l:@L> "if" "(" <cond:Expression> ")" "then" <then_block:Block> <r:@R> => {
+        Located {
+            node: Statement::IfThen(cond.node, then_block.into_iter().map(|loc| loc.node).collect()),
+            span: Span { start: l, end: r },
+        }
     },
-    "if" "(" <cond:Expression> ")" "then" "{" <then_block:Statement*> "}" "else" "{" <else_block:Statement*> "}" => {
-        Statement::IfThenElse(cond, then_block, else_block)
+    <l:@L> "if" "(" <cond:Expression> ")" "then" <then_block:Block> "else" <else_block:Block> <r:@R> => {
+        Located {
+            node: Statement::IfThenElse(
+                cond.node, 
+                then_block.into_iter().map(|loc| loc.node).collect(),
+                else_block.into_iter().map(|loc| loc.node).collect()
+            ),
+            span: Span { start: l, end: r },
+        }
     },
-    "do" "{" <body:Statement*> "}" "while" "(" <cond:Expression> ")" ";" => {
-        Statement::DoWhile(body, cond)
+    <l:@L> "do" <body:Block> "while" "(" <cond:Expression> ")" ";" <r:@R> => {
+        Located {
+            node: Statement::DoWhile(body.into_iter().map(|loc| loc.node).collect(), cond.node),
+            span: Span { start: l, end: r },
+        }
     },
-    "for" <var:Id> "from" <from:Expression> "to" <to:Expression> "step" <step:Expression> "{" <body:Statement*> "}" => {
-        Statement::For(var, from, to, step, body)
+    <l:@L> "for" <var:Id> "from" <from:Expression> "to" <to:Expression> "step" <step:Expression> <body:Block> <r:@R> => {
+        Located {
+            node: Statement::For(
+                var, 
+                from.node, 
+                to.node, 
+                step.node, 
+                body.into_iter().map(|loc| loc.node).collect()
+            ),
+            span: Span { start: l, end: r },
+        }
     },
-    "input" "(" <var:LValue> ")" ";" => {
-        Statement::Input(var)
+    <l:@L> "input" "(" <var:LValue> ")" ";" <r:@R> => {
+        Located {
+            node: Statement::Input(var.node),
+            span: Span { start: l, end: r },
+        }
     },
-    "output" "(" <exprs:ExprList> ")" ";" => {
-        Statement::Output(exprs)
+    <l:@L> "output" "(" <exprs:OutputExprList> ")" ";" <r:@R> => {
+        Located {
+            node: Statement::Output(exprs.into_iter().map(|loc| loc.node).collect()),
+            span: Span { start: l, end: r },
+        }
     },
-    // ";" => Statement::Empty,
 };
 
 // LValue rule: Determines valid left-hand side targets in assignments, like identifiers or array elements.
-LValue: Expression = {
-    <id:Id> => Expression::Identifier(id),
-    <id:Id> "[" <idx:Expression> "]" => Expression::ArrayAccess(id, Box::new(idx)),
+LValue: Located<Expression> = {
+    <l:@L> <id:Id> <r:@R> => Located {
+        node: Expression::Identifier(id),
+        span: Span { start: l, end: r },
+    },
+    <l:@L> <id:Id> "[" <idx:Expression> "]" <r:@R> => Located {
+        node: Expression::ArrayAccess(id, Box::new(idx.node)),
+        span: Span { start: l, end: r },
+    },
 };
 
-// Expression rules: Structured by precedence (logical → comparison → additive → multiplicative → unary).
-// This ensures correct parsing of operators with different priorities.
-Expression: Expression = {
+// Expression rules
+Expression: Located<Expression> = {
     LogicalExpr,
 };
 
-LogicalExpr: Expression = {
-    <lhs:LogicalExpr> "OR" <rhs:ComparisonExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::Or, Box::new(rhs))
+LogicalExpr: Located<Expression> = {
+    <l:@L> <lhs:LogicalExpr> "OR" <rhs:ComparisonExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::Or, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:LogicalExpr> "AND" <rhs:ComparisonExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::And, Box::new(rhs))
+    <l:@L> <lhs:LogicalExpr> "AND" <rhs:ComparisonExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::And, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
     ComparisonExpr,
 };
 
-ComparisonExpr: Expression = {
-    <lhs:ComparisonExpr> "==" <rhs:AdditiveExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::Equal, Box::new(rhs))
+ComparisonExpr: Located<Expression> = {
+    <l:@L> <lhs:ComparisonExpr> "==" <rhs:AdditiveExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::Equal, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:ComparisonExpr> "!=" <rhs:AdditiveExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::NotEqual, Box::new(rhs))
+    <l:@L> <lhs:ComparisonExpr> "!=" <rhs:AdditiveExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::NotEqual, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:ComparisonExpr> "<" <rhs:AdditiveExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::LessThan, Box::new(rhs))
+    <l:@L> <lhs:ComparisonExpr> "<" <rhs:AdditiveExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::LessThan, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:ComparisonExpr> ">" <rhs:AdditiveExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::GreaterThan, Box::new(rhs))
+    <l:@L> <lhs:ComparisonExpr> ">" <rhs:AdditiveExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::GreaterThan, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:ComparisonExpr> "<=" <rhs:AdditiveExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::LessEqual, Box::new(rhs))
+    <l:@L> <lhs:ComparisonExpr> "<=" <rhs:AdditiveExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::LessEqual, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:ComparisonExpr> ">=" <rhs:AdditiveExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::GreaterEqual, Box::new(rhs))
+    <l:@L> <lhs:ComparisonExpr> ">=" <rhs:AdditiveExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::GreaterEqual, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
     AdditiveExpr,
 };
 
-AdditiveExpr: Expression = {
-    <lhs:AdditiveExpr> "+" <rhs:MultiplicativeExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::Add, Box::new(rhs))
+AdditiveExpr: Located<Expression> = {
+    <l:@L> <lhs:AdditiveExpr> "+" <rhs:MultiplicativeExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::Add, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:AdditiveExpr> "-" <rhs:MultiplicativeExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::Subtract, Box::new(rhs))
+    <l:@L> <lhs:AdditiveExpr> "-" <rhs:MultiplicativeExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::Subtract, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
     MultiplicativeExpr,
 };
 
-MultiplicativeExpr: Expression = {
-    <lhs:MultiplicativeExpr> "*" <rhs:UnaryExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::Multiply, Box::new(rhs))
+MultiplicativeExpr: Located<Expression> = {
+    <l:@L> <lhs:MultiplicativeExpr> "*" <rhs:UnaryExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::Multiply, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
-    <lhs:MultiplicativeExpr> "/" <rhs:UnaryExpr> => {
-        Expression::BinaryOp(Box::new(lhs), Operator::Divide, Box::new(rhs))
+    <l:@L> <lhs:MultiplicativeExpr> "/" <rhs:UnaryExpr> <r:@R> => {
+        Located {
+            node: Expression::BinaryOp(Box::new(lhs.node), Operator::Divide, Box::new(rhs.node)),
+            span: Span { start: l, end: r },
+        }
     },
     UnaryExpr,
 };
 
-UnaryExpr: Expression = {
-    "!" <expr:PrimaryExpr> => {
-        Expression::UnaryOp(UnaryOperator::Not, Box::new(expr))
+UnaryExpr: Located<Expression> = {
+    <l:@L> "!" <expr:PrimaryExpr> <r:@R> => {
+        Located {
+            node: Expression::UnaryOp(UnaryOperator::Not, Box::new(expr.node)),
+            span: Span { start: l, end: r },
+        }
     },
     PrimaryExpr,
 };
 
-PrimaryExpr: Expression = {
-    <id:Id> => Expression::Identifier(id),
-    <id:Id> "[" <idx:Expression> "]" => Expression::ArrayAccess(id, Box::new(idx)),
-    <lit:LiteralValue> => Expression::Literal(lit),
+PrimaryExpr: Located<Expression> = {
+    <l:@L> <id:Id> <r:@R> => Located {
+        node: Expression::Identifier(id),
+        span: Span { start: l, end: r },
+    },
+    <l:@L> <id:Id> "[" <idx:Expression> "]" <r:@R> => Located {
+        node: Expression::ArrayAccess(id, Box::new(idx.node)),
+        span: Span { start: l, end: r },
+    },
+    <l:@L> <lit:LiteralValue> <r:@R> => Located {
+        node: Expression::Literal(lit),
+        span: Span { start: l, end: r },
+    },
     "(" <expr:Expression> ")" => expr,
 };
 
@@ -225,7 +329,6 @@ PrimaryExpr: Expression = {
 LiteralValue: Literal = {
     <n:Int> => Literal::Int(n),
     <f:Float> => Literal::Float(f),
-    <s:StringLiteral> => Literal::String(s),
 };
 
 // Helper rules for comma-separated lists
@@ -237,7 +340,7 @@ IdList: Vec<String> = {
     }
 };
 
-ExprList: Vec<Expression> = {
+ExprList: Vec<Located<Expression>> = {
     <v:(<Expression> ",")*> <e:Expression> => {
         let mut v = v;
         v.push(e);
@@ -246,22 +349,37 @@ ExprList: Vec<Expression> = {
     => vec![],
 };
 
-// Helper rule to extract identifier string
+// Helper rules
 Id: String = {
     Idf => <>,
 };
 
-// Helper rule for integer literals
 IntLiteral: i32 = {
     Int => <>,
 };
 
-// Helper rule for float literals
 FloatLiteral: f32 = {
     Float => <>,
 };
 
-// Helper rule for string literals
 StringLiteral: String = {
     String => <>,
+};
+
+// Restrict StringLiteral to only be used in the output function
+OutputExprList: Vec<Located<Expression>> = {
+    <v:(<OutputExpression> ",")*> <e:OutputExpression> => {
+        let mut v = v;
+        v.push(e);
+        v
+    },
+    => vec![],
+};
+
+OutputExpression: Located<Expression> = {
+    <l:@L> <lit:StringLiteral> <r:@R> => Located {
+        node: Expression::Literal(Literal::String(lit)),
+        span: Span { start: l, end: r },
+    },
+    <expr:Expression> => expr,
 };

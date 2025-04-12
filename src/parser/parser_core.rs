@@ -33,7 +33,7 @@ pub fn parse(tokens: Vec<TokenWithMetaData>, source: &str) -> Result<Program, Sy
      let token_iter = lalrpop_tokens.into_iter();
      
     match grammar_parser::ProgramParser::new().parse(token_iter) {
-        Ok(program) => Ok(program),
+        Ok(located_program) => Ok(located_program.into_inner()),
         Err(e) => Err(convert_lalrpop_error(e, Some(source))),
     }
 }

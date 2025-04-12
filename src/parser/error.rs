@@ -334,13 +334,23 @@ where
             expected,
         } => {
             let (line, column, source_line) = get_position_info(start);
-            SyntaxError::UnexpectedToken {
-                token: token.to_string(),
-                position: (start, end),
-                expected,
-                source_line,
-                line,
-                column,
+            if expected.is_empty() {
+                SyntaxError::ExtraToken {
+                    token: token.to_string(),
+                    position: (start, end),
+                    source_line,
+                    line,
+                    column,
+                }
+            } else {
+                SyntaxError::UnexpectedToken {
+                    token: token.to_string(),
+                    position: (start, end),
+                    expected,
+                    source_line,
+                    line,
+                    column,
+                }
             }
         }
         ParseError::ExtraToken {

@@ -1,6 +1,26 @@
 // AST for MiniSoft language
 
 /// Program is the root of the AST
+/// Represents a position in source code
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+}
+
+/// Wrapper for any AST node that includes position information
+#[derive(Debug, Clone, PartialEq)]
+pub struct Located<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+impl<T> Located<T> {
+    pub fn into_inner(self) -> T {
+        self.node
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub name: String,
@@ -42,6 +62,7 @@ pub enum Statement {
     For(String, Expression, Expression, Expression, Vec<Statement>),
     Input(Expression),
     Output(Vec<Expression>),
+    Block(Vec<Statement>), // New variant for block statements
     Empty,
 }
 

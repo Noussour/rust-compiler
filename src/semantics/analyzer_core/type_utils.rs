@@ -1,5 +1,5 @@
 use crate::parser::ast::{Expression, Literal, Type};
-use crate::semantics::analyzer::SemanticAnalyzer;
+use crate::semantics::analyzer_core::SemanticAnalyzer;
 
 impl SemanticAnalyzer {
     /// Checks if two types are compatible for operations

@@ -208,6 +208,9 @@ fn print_symbol_table(&self, analyzer: &SemanticAnalyzer) {
     ) {
         for statement in statements {
             match statement {
+                crate::parser::ast::Statement::Block(block_statements) => {
+                    self.collect_statement_positions(block_statements, position_map);
+                }
                 crate::parser::ast::Statement::Assignment(target, expr) => {
                     // Collect identifiers from the target
                     self.collect_expr_positions(target, position_map);

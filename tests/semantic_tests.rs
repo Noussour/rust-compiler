@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod semantic_tests {
     use rust_compiler::parser::parser_core::parse_source;
-    use rust_compiler::semantics::analyzer::SemanticAnalyzer;
+    use rust_compiler::semantics::analyzer_core::SemanticAnalyzer;
     use rust_compiler::semantics::error::SemanticError;
     use std::collections::HashMap;
 

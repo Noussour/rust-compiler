@@ -1,5 +1,5 @@
 use crate::parser::ast::{Declaration, Literal, Type};
-use crate::semantics::analyzer::SemanticAnalyzer;
+use crate::semantics::analyzer_core::SemanticAnalyzer;
 use crate::semantics::error::SemanticError;
 use crate::semantics::symbol_table::{Symbol, SymbolKind};
 

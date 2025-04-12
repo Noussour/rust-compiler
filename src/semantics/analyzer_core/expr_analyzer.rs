@@ -1,5 +1,5 @@
 use crate::parser::ast::{Expression, Literal, Operator, Type, UnaryOperator};
-use crate::semantics::analyzer::SemanticAnalyzer;
+use crate::semantics::analyzer_core::SemanticAnalyzer;
 use crate::semantics::error::SemanticError;
 
 impl SemanticAnalyzer {
