@@ -1,144 +1,138 @@
-mod decl_analyzer;
-mod expr_analyzer;
-mod stmt_analyzer;
-mod type_utils;
-
-use crate::parser::ast::Program;
+use crate::parser::ast::{Type, Span, Program};
 use crate::semantics::error::SemanticError;
+use crate::semantics::source_map::SourceMap;
 use crate::semantics::symbol_table::SymbolTable;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-// Enhanced position tracking for expressions
-#[derive(Debug, Clone, PartialEq)]
-struct ExpressionPosition {
-    pub line: usize,
-    pub column: usize,
-}
-
-/// The semantic analyzer for MiniSoft
-#[derive(Default)]
 pub struct SemanticAnalyzer {
     symbol_table: SymbolTable,
     errors: Vec<SemanticError>,
-    // Store position information from the lexer
-    positions: HashMap<String, (usize, usize)>,
-    // Track current position for expressions
-    current_expr_pos: Option<ExpressionPosition>,
-    // Track expression positions
-    expression_positions: HashMap<String, (usize, usize)>,
-    // Keep track of division by zero literals for better error reporting
-    zero_literals: Vec<(usize, usize)>,
-    // Keep track of reported error keys to avoid duplicates
     reported_errors: HashSet<String>,
+    source_map: SourceMap,
+    zero_literals: Vec<(usize, usize)>, // For tracking division by zero
 }
 
 impl SemanticAnalyzer {
-    /// Creates a new semantic analyzer with position information
-    pub fn new_with_positions(positions: HashMap<String, (usize, usize)>) -> Self {
+    pub fn new() -> Self {
+        // Create with an empty source map
         SemanticAnalyzer {
             symbol_table: SymbolTable::new(),
             errors: Vec::new(),
-            positions,
-            current_expr_pos: None,
-            expression_positions: HashMap::new(),
-            zero_literals: Vec::new(),
             reported_errors: HashSet::new(),
+            source_map: SourceMap::new(String::new()),
+            zero_literals: Vec::new(),
         }
     }
 
-    /// Gets position information for an identifier
-    fn get_position(&self, name: &str) -> (usize, usize) {
-        // First try identifier's known position from the map
-        if let Some(pos) = self.positions.get(name) {
-            return *pos;
+    pub fn new_with_source_code(source_code: String) -> Self {
+        SemanticAnalyzer {
+            symbol_table: SymbolTable::new(),
+            errors: Vec::new(),
+            reported_errors: HashSet::new(),
+            source_map: SourceMap::new(source_code),
+            zero_literals: Vec::new(),
         }
-
-        // Try the expression positions map (for computed expressions)
-        if let Some(pos) = self.expression_positions.get(name) {
-            return *pos;
-        }
-
-        // Fall back to current expression position
-        if let Some(pos) = &self.current_expr_pos {
-            return (pos.line, pos.column);
-        }
-
-        // Default position
-        (1, 1)
     }
 
-    /// Set the current expression position context
-    fn set_current_expr_pos(&mut self, line: usize, column: usize) {
-        self.current_expr_pos = Some(ExpressionPosition { line, column });
-    }
-
-    /// Track a position for a specific expression key
-    fn track_expression_pos(&mut self, key: String, line: usize, column: usize) {
-        self.expression_positions.insert(key, (line, column));
-    }
-
-    /// Clear the current expression position context
-    fn clear_current_expr_pos(&mut self) {
-        self.current_expr_pos = None;
-    }
-
-    /// Analyzes a program for semantic errors
     pub fn analyze(&mut self, program: &Program) {
-        // Set position for program name
-        if let Some(pos) = self.positions.get(&program.name) {
-            self.set_current_expr_pos(pos.0, pos.1);
+        // First pass: analyze declarations
+        for decl in &program.declarations {
+            self.analyze_declaration(decl);
         }
 
-        // Process all declarations
-        for declaration in &program.declarations {
-            self.analyze_declaration(declaration);
+        // Second pass: analyze statements
+        for stmt in &program.statements {
+            self.analyze_statement(stmt);
         }
-
-        // Clear any accumulated positions to start fresh for statements
-        self.clear_current_expr_pos();
-
-        // Process all statements
-        for statement in &program.statements {
-            self.analyze_statement(statement);
-        }
-
-        self.clear_current_expr_pos();
     }
 
-    /// Gets all semantic errors found during analysis
+    // Error helper methods
+    fn type_mismatch_error(
+        &mut self,
+        span: Span,
+        expected: &Type,
+        found: &Type,
+        context: Option<&str>,
+    ) {
+        self.add_error(SemanticError::TypeMismatch {
+            expected: format!("{}", expected),
+            found: format!("{}", found),
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+            context: context.map(|s| s.to_string()),
+        });
+    }
+
+    fn undeclared_identifier_error(&mut self, span: Span, name: &str) {
+        self.add_error(SemanticError::UndeclaredIdentifier {
+            name: name.to_string(),
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
+
+    fn constant_modification_error(&mut self, span: Span, name: &str) {
+        self.add_error(SemanticError::ConstantModification {
+            name: name.to_string(),
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
+
+    fn array_index_out_of_bounds_error(
+        &mut self,
+        span: Span,
+        name: &str,
+        index: usize,
+        size: usize,
+    ) {
+        self.add_error(SemanticError::ArrayIndexOutOfBounds {
+            name: name.to_string(),
+            index,
+            size,
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
+
+    fn division_by_zero_error(&mut self, span: Span) {
+        self.add_error(SemanticError::DivisionByZero {
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
+
+    fn duplicate_declaration_error(
+        &mut self,
+        span: Span,
+        name: &str,
+        original_line: usize,
+        original_column: usize,
+    ) {
+        self.add_error(SemanticError::DuplicateDeclaration {
+            name: name.to_string(),
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+            original_line,
+            original_column,
+        });
+    }
+
+    pub fn add_error(&mut self, error: SemanticError) {
+        // Only add the error if it hasn't been reported yet
+        let error_key = format!("{:?}", error);
+        if !self.reported_errors.contains(&error_key) {
+            self.reported_errors.insert(error_key);
+            self.errors.push(error);
+        }
+    }
+
     pub fn get_errors(&self) -> &[SemanticError] {
         &self.errors
     }
 
-    /// Gets the completed symbol table
     pub fn get_symbol_table(&self) -> &SymbolTable {
         &self.symbol_table
     }
 
-    /// Adds an error if it hasn't been reported yet
-    fn add_error(&mut self, error: SemanticError) {
-        // Create a unique key for this error to avoid duplicates
-        let error_key = match &error {
-            SemanticError::TypeMismatch {
-                expected,
-                found,
-                line,
-                column,
-                context,
-            } => {
-                format!("type_mismatch:{}:{}:{}:{}:{}", expected, found, line, column, context.as_ref().unwrap_or(&"".to_string()))
-            }
-            SemanticError::UndeclaredIdentifier { name, line, column } => {
-                format!("undeclared:{}:{}:{}", name, line, column)
-            }
-            // Add other error types as needed
-            _ => format!("{:?}", error),
-        };
-
-        // Only add the error if we haven't reported it yet
-        if !self.reported_errors.contains(&error_key) {
-            self.errors.push(error);
-            self.reported_errors.insert(error_key);
-        }
-    }
 }

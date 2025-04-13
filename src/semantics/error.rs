@@ -4,7 +4,8 @@ use crate::error_reporter::ErrorReporter;
 use crate::error_reporter::format_code_context;
 
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug)]
 pub enum SemanticError {
     /// Variable not declared before use
     UndeclaredIdentifier {
@@ -52,9 +53,6 @@ pub enum SemanticError {
         line: usize,
         column: usize,
     },
-
-    /// Catch-all for other semantic problems
-    Other(String),
 }
 
 impl ErrorReporter for SemanticError {
@@ -142,8 +140,7 @@ impl ErrorReporter for SemanticError {
             },
             SemanticError::ArrayIndexOutOfBounds { name, size, .. } => {
                 Some(format!("Array '{}' has size {}. Use indices from 0 to {}", name, size, size - 1))
-            },
-            SemanticError::Other(_) => None,
+            }
         }
     }
 
@@ -159,7 +156,6 @@ impl ErrorReporter for SemanticError {
             SemanticError::DivisionByZero { line, column } => (*line, *column),
             SemanticError::ConstantModification { line, column, .. } => (*line, *column),
             SemanticError::ArrayIndexOutOfBounds { line, column, .. } => (*line, *column),
-            SemanticError::Other(_) => (0, 0),
         }
     }
 }
@@ -190,9 +186,6 @@ impl SemanticError {
                 format!("Array index out of bounds: index {} exceeds size {} for array '{}'", 
                     index, size, name)
             },
-            SemanticError::Other(msg) => {
-                msg.clone()
-            },
         }
     }
     
@@ -203,9 +196,7 @@ impl SemanticError {
             SemanticError::TypeMismatch { .. } => 1, // Default token length
             SemanticError::DivisionByZero { .. } => 1,
             SemanticError::ConstantModification { name, .. } => name.len(),
-            SemanticError::ArrayIndexOutOfBounds { name, .. } => name.len(),
-            SemanticError::Other(_) => 1,
-        }
+            SemanticError::ArrayIndexOutOfBounds { name, .. } => name.len(),        }
     }
 }
 

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod parser_tests {
     use rust_compiler::parser::ast::{
-        Declaration, Expression, Literal, Operator, Program, Statement, Type,
+        Declaration, DeclarationKind, Expression, Literal, Operator, Program, Statement, Type
     };
     use rust_compiler::parser::parser_core::parse_source;
 
@@ -37,8 +37,8 @@ mod parser_tests {
 
         assert_eq!(program.declarations.len(), 2);
 
-        match &program.declarations[0] {
-            Declaration::Variable(names, typ) => {
+        match &program.declarations[0].node {
+            DeclarationKind::Variable(names, typ) => {
                 assert_eq!(names.len(), 1);
                 assert_eq!(names[0], "x");
                 assert!(matches!(typ, Type::Int));
@@ -46,8 +46,8 @@ mod parser_tests {
             _ => panic!("Expected variable declaration"),
         }
 
-        match &program.declarations[1] {
-            Declaration::Variable(names, typ) => {
+        match &program.declarations[1].node {
+            DeclarationKind::Variable(names, typ) => {
                 assert_eq!(names.len(), 2);
                 assert_eq!(names[0], "y");
                 assert_eq!(names[1], "z");
@@ -72,7 +72,7 @@ mod parser_tests {
         assert_eq!(program.declarations.len(), 2);
 
         match &program.declarations[0] {
-            Declaration::Array(names, typ, size) => {
+            DeclarationKind::Array(names, typ, size) => {
                 assert_eq!(names.len(), 1);
                 assert_eq!(names[0], "arr");
                 assert!(matches!(typ, Type::Int));
@@ -82,7 +82,7 @@ mod parser_tests {
         }
 
         match &program.declarations[1] {
-            Declaration::Array(names, typ, size) => {
+            DeclarationKind::Array(names, typ, size) => {
                 assert_eq!(names.len(), 2);
                 assert_eq!(names[0], "matrix1");
                 assert_eq!(names[1], "matrix2");

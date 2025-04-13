@@ -6,16 +6,11 @@ impl SemanticAnalyzer {
     /// Analyzes an expression to determine its type
     /// Returns the type of the expression, or None if there is an error
     pub(crate) fn analyze_expression(&mut self, expr: &Expression) -> Option<Type> {
-        match expr {
+        match &expr.node {
             Expression::Identifier(name) => {
                 // Check if the identifier exists
                 if !self.symbol_table.contains(name) {
-                    let (line, column) = self.get_position(name);
-                    self.add_error(SemanticError::UndeclaredIdentifier {
-                        name: name.clone(),
-                        line,
-                        column,
-                    });
+                    self.undeclared_identifier_error(expr.span, name);
                     return None;
                 }
 
@@ -26,12 +21,7 @@ impl SemanticAnalyzer {
             Expression::ArrayAccess(name, index_expr) => {
                 // Check if the array exists
                 if !self.symbol_table.contains(name) {
-                    let (line, column) = self.get_position(name);
-                    self.add_error(SemanticError::UndeclaredIdentifier {
-                        name: name.clone(),
-                        line,
-                        column,
-                    });
+                    self.undeclared_identifier_error(expr.span, name);
                     return None;
                 }
 
@@ -44,16 +34,14 @@ impl SemanticAnalyzer {
                         let array_size = *size;
 
                         // Check if the index is a constant and within bounds
-                        if let Expression::Literal(Literal::Int(idx)) = &**index_expr {
+                        if let Expression::Literal(Literal::Int(idx)) = &index_expr.node {
                             if *idx < 0 || *idx as usize >= array_size {
-                                let (line, column) = self.get_position(name);
-                                self.add_error(SemanticError::ArrayIndexOutOfBounds {
-                                    name: name.clone(),
-                                    index: *idx as usize,
-                                    size: array_size,
-                                    line,
-                                    column,
-                                });
+                                self.array_index_out_of_bounds_error(
+                                    expr.span,
+                                    name,
+                                    *idx as usize,
+                                    array_size,
+                                );
                                 return None;
                             }
                         }
@@ -62,14 +50,12 @@ impl SemanticAnalyzer {
                         let idx_type = self.analyze_expression(index_expr);
                         if let Some(idx_type) = idx_type {
                             if idx_type != Type::Int {
-                                let (line, column) = self.get_position(name);
-                                self.add_error(SemanticError::TypeMismatch {
-                                    expected: "Int".to_string(),
-                                    found: format!("{}", idx_type),
-                                    line,
-                                    column,
-                                    context: Some("array index".to_string()),
-                                });
+                                self.type_mismatch_error(
+                                    index_expr.span,
+                                    &Type::Int,
+                                    &idx_type,
+                                    Some("array index"),
+                                );
                                 return None;
                             }
                         } else {
@@ -80,32 +66,35 @@ impl SemanticAnalyzer {
                         Some(symbol_type)
                     }
                     _ => {
-                        self.add_error(SemanticError::Other(format!(
-                            "Cannot index non-array variable '{}'",
-                            name
-                        )));
+                        self.other_error(format!("Cannot index non-array variable '{}'", name));
                         None
                     }
                 }
             }
             Expression::Literal(lit) => {
-                // Check for division by zero in constant literals
+                // Store zero literal positions for division by zero checks
                 match lit {
-                    Literal::Int(_) => Some(Type::Int),
-                    Literal::Float(_) => Some(Type::Float),
+                    Literal::Int(value) => {
+                        if *value == 0 {
+                            let (line, column) = self.get_span_location(&expr.span);
+                            self.zero_literals.push((line, column));
+                        }
+                        Some(Type::Int)
+                    }
+                    Literal::Float(value) => {
+                        if *value == 0.0 {
+                            let (line, column) = self.get_span_location(&expr.span);
+                            self.zero_literals.push((line, column));
+                        }
+                        Some(Type::Float)
+                    }
                     Literal::String(_) => None, // No string type in MiniSoft
                 }
             }
             Expression::BinaryOp(left, op, right) => {
-                // Save the current position before recursion
-                let saved_pos = self.current_expr_pos.clone();
-
                 // Check the types of left and right operands
                 let left_type = self.analyze_expression(left);
                 let right_type = self.analyze_expression(right);
-
-                // Restore the position after recursion
-                self.current_expr_pos = saved_pos;
 
                 if left_type.is_none() || right_type.is_none() {
                     return None;
@@ -114,44 +103,17 @@ impl SemanticAnalyzer {
                 let left_type = left_type.unwrap();
                 let right_type = right_type.unwrap();
 
-                // Get the current position for error reporting
-                let (line, column) = if let Some(pos) = &self.current_expr_pos {
-                    (pos.line, pos.column)
-                } else {
-                    (1, 1) // Default
-                };
-
                 match op {
                     // Arithmetic operators
                     Operator::Add | Operator::Subtract | Operator::Multiply | Operator::Divide => {
                         // Check for division by zero
                         if *op == Operator::Divide {
-                            if let Expression::Literal(Literal::Int(0)) = **right {
-                                // Get the position of the zero literal if possible
-                                let (zero_line, zero_col) = if !self.zero_literals.is_empty() {
-                                    self.zero_literals[0]
-                                } else {
-                                    (line, column + 1) // Estimate position of the divisor
-                                };
-
-                                self.add_error(SemanticError::DivisionByZero {
-                                    line: zero_line,
-                                    column: zero_col,
-                                });
+                            if let Expression::Literal(Literal::Int(0)) = right.node {
+                                self.division_by_zero_error(right.span);
                                 return None;
-                            } else if let Expression::Literal(Literal::Float(f)) = **right {
+                            } else if let Expression::Literal(Literal::Float(f)) = right.node {
                                 if f == 0.0 {
-                                    // Get position of the zero literal
-                                    let (zero_line, zero_col) = if !self.zero_literals.is_empty() {
-                                        self.zero_literals[0]
-                                    } else {
-                                        (line, column + 1) // Estimate position
-                                    };
-
-                                    self.add_error(SemanticError::DivisionByZero {
-                                        line: zero_line,
-                                        column: zero_col,
-                                    });
+                                    self.division_by_zero_error(right.span);
                                     return None;
                                 }
                             }
@@ -159,16 +121,14 @@ impl SemanticAnalyzer {
 
                         // For arithmetic operations, allow mixed numeric types
                         if self.are_types_compatible(&left_type, &right_type) {
-                            // Return the resulting type (Float if mixing Int and Float)
                             Some(self.resulting_type(&left_type, &right_type))
                         } else {
-                            self.add_error(SemanticError::TypeMismatch {
-                                expected: format!("{}", left_type),
-                                found: format!("{}", right_type),
-                                line,
-                                column,
-                                context: Some("arithmetic".to_string()),
-                            });
+                            self.type_mismatch_error(
+                                expr.span,
+                                &left_type,
+                                &right_type,
+                                Some("arithmetic"),
+                            );
                             None
                         }
                     }
@@ -185,13 +145,12 @@ impl SemanticAnalyzer {
                             // Comparison operations return boolean (represented as Int)
                             Some(Type::Int)
                         } else {
-                            self.add_error(SemanticError::TypeMismatch {
-                                expected: format!("{}", left_type),
-                                found: format!("{}", right_type),
-                                line,
-                                column,
-                                context: Some("comparison".to_string()),
-                            });
+                            self.type_mismatch_error(
+                                expr.span,
+                                &left_type,
+                                &right_type,
+                                Some("comparison"),
+                            );
                             None
                         }
                     }
@@ -200,13 +159,12 @@ impl SemanticAnalyzer {
                     Operator::And | Operator::Or => {
                         // Logical operations work on boolean values (Int)
                         if left_type != Type::Int || right_type != Type::Int {
-                            self.add_error(SemanticError::TypeMismatch {
-                                expected: "Int".to_string(),
-                                found: format!("{}, {}", left_type, right_type),
-                                line,
-                                column,
-                                context: Some("logical".to_string()),
-                            });
+                            self.type_mismatch_error(
+                                expr.span,
+                                &Type::Int,
+                                &Type::Int,
+                                Some("logical"),
+                            );
                             return None;
                         }
 
@@ -223,43 +181,15 @@ impl SemanticAnalyzer {
                 let expr_type = expr_type.unwrap();
 
                 match op {
-                    // UnaryOperator::Negate => {
-                    //     // Negation requires a numeric type
-                    //     if expr_type != Type::Int && expr_type != Type::Float {
-                    //         let (line, column) = if let Some(pos) = &self.current_expr_pos {
-                    //             (pos.line, pos.column)
-                    //         } else {
-                    //             (1, 1)
-                    //         };
-                    //
-                    //         self.add_error(SemanticError::TypeMismatch {
-                    //             expected: "numeric type".to_string(),
-                    //             found: format!("{}", expr_type),
-                    //             line,
-                    //             column,
-                    //         });
-                    //         return None;
-                    //     }
-                    //
-                    //     // Negation returns the same type
-                    //     Some(expr_type)
-                    // }
                     UnaryOperator::Not => {
                         // Logical negation requires a boolean value (Int)
                         if expr_type != Type::Int {
-                            let (line, column) = if let Some(pos) = &self.current_expr_pos {
-                                (pos.line, pos.column)
-                            } else {
-                                (1, 1)
-                            };
-
-                            self.add_error(SemanticError::TypeMismatch {
-                                expected: "Int".to_string(),
-                                found: format!("{}", expr_type),
-                                line,
-                                column,
-                                context: Some("logical".to_string()),
-                            });
+                            self.type_mismatch_error(
+                                expr.span,
+                                &Type::Int,
+                                &expr_type,
+                                Some("logical"),
+                            );
                             return None;
                         }
 

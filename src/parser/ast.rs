@@ -29,13 +29,15 @@ pub struct Program {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Declaration {
+pub enum DeclarationKind {
     Variable(Vec<String>, Type),
     Array(Vec<String>, Type, usize),
     VariableWithInit(Vec<String>, Type, Expression),
     ArrayWithInit(Vec<String>, Type, usize, Vec<Expression>),
     Constant(String, Type, Literal),
 }
+
+pub type Declaration = Located<DeclarationKind>;
 
 /// Data types in MiniSoft
 #[derive(Debug, Clone, PartialEq)]
@@ -54,7 +56,7 @@ impl std::fmt::Display for Type {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
+pub enum StatementKind {
     Assignment(Expression, Expression),
     IfThen(Expression, Vec<Statement>),
     IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
@@ -62,18 +64,22 @@ pub enum Statement {
     For(String, Expression, Expression, Expression, Vec<Statement>),
     Input(Expression),
     Output(Vec<Expression>),
-    Block(Vec<Statement>), // New variant for block statements
+    Block(Vec<Statement>),
     Empty,
 }
 
+pub type Statement = Located<StatementKind>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expression {
+pub enum ExpressionKind {
     Identifier(String),
     ArrayAccess(String, Box<Expression>),
     Literal(Literal),
     BinaryOp(Box<Expression>, Operator, Box<Expression>),
     UnaryOp(UnaryOperator, Box<Expression>),
 }
+
+pub type Expression = Located<ExpressionKind>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
