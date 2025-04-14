@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 use crate::lexer::token::Token;
-use crate::parser::ast::{Span, Located, Program, DeclarationKind, StatementKind, ExpressionKind, Operator, UnaryOperator, Type, Literal};
+use crate::parser::ast::{Span, Located, Program, DeclarationKind, StatementKind, ExpressionKind, Operator, UnaryOperator, Type, Literal, LiteralKind};
 
 grammar<'input>;
 
@@ -337,9 +337,15 @@ PrimaryExpr: Located<ExpressionKind> = {
 };
 
 // Literal values - parse integer, float, and string constants.
-LiteralValue: Literal = {
-    <n:Int> => Literal::Int(n),
-    <f:Float> => Literal::Float(f),
+LiteralValue: Located<LiteralKind> = {
+    <l:@L> <n:Int> <r:@R> => Located {
+        node: LiteralKind::Int(n),
+        span: Span { start: l, end: r },
+    },
+    <l:@L> <f:Float> <r:@R> => Located {
+        node: LiteralKind::Float(f),
+        span: Span { start: l, end: r },
+    },
 };
 
 // Helper rules for comma-separated lists
@@ -388,9 +394,15 @@ OutputExprList: Vec<Located<ExpressionKind>> = {
 };
 
 OutputExpression: Located<ExpressionKind> = {
-    <l:@L> <lit:StringLiteral> <r:@R> => Located {
-        node: ExpressionKind::Literal(Literal::String(lit)),
-        span: Span { start: l, end: r },
-    },
+    <l:@L> <lit:StringLiteral> <r:@R> => {
+        let string_literal = Located {
+            node: LiteralKind::String(lit),
+            span: Span { start: l, end: r },
+        };
+        Located {
+            node: ExpressionKind::Literal(string_literal),
+            span: Span { start: l, end: r },
+        }
+    }, // Add this comma
     <expr:Expression> => expr,
 };

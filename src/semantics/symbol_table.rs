@@ -1,5 +1,5 @@
-use crate::parser::ast::{Literal, Type};
-use std::collections::HashMap;
+use crate::parser::ast::{LiteralKind, Type};
+use std::{collections::HashMap, default};
 
 /// Symbol kind (variable, constant, or array)
 #[derive(Debug, Clone, PartialEq)]
@@ -15,7 +15,8 @@ pub struct Symbol {
     pub name: String,
     pub kind: SymbolKind,
     pub symbol_type: Type,
-    pub value: Option<Literal>,
+    pub value: Option<LiteralKind>,
+    pub is_constant: bool,
     pub line: usize,
     pub column: usize,
 }
@@ -57,5 +58,19 @@ impl SymbolTable {
     /// Gets all symbols
     pub fn get_all(&self) -> Vec<&Symbol> {
         self.symbols.values().collect()
+    }
+}
+
+impl default::Default for Symbol {
+    fn default() -> Self {
+        Symbol {
+            name: String::new(),
+            kind: SymbolKind::Variable,
+            symbol_type: Type::default(),
+            value: None,
+            line: 0,
+            column: 0,
+            is_constant: false,
+        }
     }
 }

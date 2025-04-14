@@ -15,7 +15,7 @@ BeginPg
   total := 10;
   
 
-  average := "not a number";
+  average := 1;
   
   if (counter + 5) then {
     output("This will cause a type error");

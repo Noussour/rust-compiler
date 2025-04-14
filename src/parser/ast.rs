@@ -44,6 +44,13 @@ pub type Declaration = Located<DeclarationKind>;
 pub enum Type {
     Int,
     Float,
+    Bool,
+}
+
+impl Default for Type {
+    fn default() -> Self {
+        Type::Float
+    }
 }
 
 impl std::fmt::Display for Type {
@@ -51,6 +58,7 @@ impl std::fmt::Display for Type {
         match self {
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
+            Type::Bool => write!(f, "Bool"),
         }
     }
 }
@@ -82,11 +90,13 @@ pub enum ExpressionKind {
 pub type Expression = Located<ExpressionKind>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Literal {
+pub enum LiteralKind {
     Int(i32),
     Float(f32),
     String(String),
 }
+
+pub type Literal = Located<LiteralKind>;
 
 /// Binary operators
 #[derive(Debug, Clone, PartialEq)]
@@ -116,13 +126,13 @@ pub enum UnaryOperator {
     Not,
 }
 
-impl Literal {
+impl LiteralKind {
     /// Get the type of this literal
     pub fn get_type(&self) -> Type {
         match self {
-            Literal::Int(_) => Type::Int,
-            Literal::Float(_) => Type::Float,
-            Literal::String(_) => panic!("String literals don't have a MiniSoft type"),
+            LiteralKind::Int(_) => Type::Int,
+            LiteralKind::Float(_) => Type::Float,
+            LiteralKind::String(_) => panic!("String literals don't have a MiniSoft type"),
         }
     }
 }

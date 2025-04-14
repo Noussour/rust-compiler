@@ -1,4 +1,9 @@
-use crate::parser::ast::{Type, Span, Program};
+mod declaration_analyzer;
+mod statement_analyzer;
+mod expression_analyzer;
+
+
+use crate::parser::ast::{Program, Span, Type};
 use crate::semantics::error::SemanticError;
 use crate::semantics::source_map::SourceMap;
 use crate::semantics::symbol_table::SymbolTable;
@@ -118,6 +123,7 @@ impl SemanticAnalyzer {
         });
     }
 
+
     pub fn add_error(&mut self, error: SemanticError) {
         // Only add the error if it hasn't been reported yet
         let error_key = format!("{:?}", error);
@@ -127,6 +133,7 @@ impl SemanticAnalyzer {
         }
     }
 
+
     pub fn get_errors(&self) -> &[SemanticError] {
         &self.errors
     }
@@ -134,5 +141,4 @@ impl SemanticAnalyzer {
     pub fn get_symbol_table(&self) -> &SymbolTable {
         &self.symbol_table
     }
-
 }
