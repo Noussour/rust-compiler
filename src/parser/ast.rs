@@ -45,11 +45,12 @@ pub enum Type {
     Int,
     Float,
     Bool,
+    String,
 }
 
 impl Default for Type {
     fn default() -> Self {
-        Type::Float
+        Type::Int
     }
 }
 
@@ -59,6 +60,7 @@ impl std::fmt::Display for Type {
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
             Type::Bool => write!(f, "Bool"),
+            Type::String => write!(f, "String"),
         }
     }
 }
@@ -69,7 +71,7 @@ pub enum StatementKind {
     IfThen(Expression, Vec<Statement>),
     IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
     DoWhile(Vec<Statement>, Expression),
-    For(String, Expression, Expression, Expression, Vec<Statement>),
+    For(Expression, Expression, Expression, Expression, Vec<Statement>),
     Input(Expression),
     Output(Vec<Expression>),
     Block(Vec<Statement>),
