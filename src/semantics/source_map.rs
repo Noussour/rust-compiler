@@ -1,4 +1,4 @@
-use crate::parser::ast::Span;
+use std::ops::Range;
 
 pub struct SourceMap {
     line_starts: Vec<usize>,
@@ -20,7 +20,7 @@ impl SourceMap {
         starts
     }
     
-    pub fn get_line_column(&self, span: Span) -> (usize, usize) {
+    pub fn get_line_column(&self, span: &Range<usize>) -> (usize, usize) {
         // Binary search to find the line
         let pos = span.start;
         let line_idx = match self.line_starts.binary_search(&pos) {
@@ -34,12 +34,12 @@ impl SourceMap {
         (line, column)
     }
     
-    pub fn get_line(&self, span: Span) -> usize {
+    pub fn get_line(&self, span: &Range<usize>) -> usize {
         let (line, _) = self.get_line_column(span);
         line
     }
     
-    pub fn get_column(&self, span: Span) -> usize {
+    pub fn get_column(&self, span: &Range<usize>) -> usize {
         let (_, column) = self.get_line_column(span);
         column
     }

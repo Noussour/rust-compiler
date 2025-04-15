@@ -1,18 +1,12 @@
-// AST for MiniSoft language
+use std::ops::Range;
 
 /// Program is the root of the AST
-/// Represents a position in source code
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Span {
-    pub start: usize,
-    pub end: usize,
-}
 
 /// Wrapper for any AST node that includes position information
 #[derive(Debug, Clone, PartialEq)]
 pub struct Located<T> {
     pub node: T,
-    pub span: Span,
+    pub span: Range<usize>,
 }
 
 impl<T> Located<T> {
@@ -74,7 +68,7 @@ pub enum StatementKind {
     For(Expression, Expression, Expression, Expression, Vec<Statement>),
     Input(Expression),
     Output(Vec<Expression>),
-    Block(Vec<Statement>),
+    Scope(Vec<Statement>),
     Empty,
 }
 

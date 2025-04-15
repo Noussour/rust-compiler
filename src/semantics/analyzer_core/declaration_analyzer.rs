@@ -1,5 +1,7 @@
+use std::ops::Range;
+
 use crate::parser::ast::{
-    Declaration, DeclarationKind, Expression, Literal, LiteralKind, Span, Type,
+    Declaration, DeclarationKind, Expression, Literal, LiteralKind, Type,
 };
 use crate::semantics::analyzer_core::SemanticAnalyzer;
 use crate::semantics::symbol_table::{Symbol, SymbolKind};
@@ -10,12 +12,12 @@ impl SemanticAnalyzer {
         match &declaration.node {
             DeclarationKind::Variable(items, typ) => {
                 for item in items {
-                    self.handle_variable_declaration(item, typ, declaration.span);
+                    self.handle_variable_declaration(item, typ, &declaration.span);
                 }
             }
             DeclarationKind::Array(items, typ, size) => {
                 for item in items {
-                    self.handle_array_declaration(item, typ, *size, declaration.span);
+                    self.handle_array_declaration(item, typ, *size, &declaration.span);
                 }
             }
             DeclarationKind::VariableWithInit(items, typ, expression) => {
@@ -24,7 +26,7 @@ impl SemanticAnalyzer {
                         item,
                         typ,
                         expression,
-                        declaration.span,
+                        &declaration.span,
                     );
                 }
             }
@@ -35,12 +37,12 @@ impl SemanticAnalyzer {
                         typ,
                         *size,
                         expressions,
-                        declaration.span,
+                        &declaration.span,
                     );
                 }
             }
             DeclarationKind::Constant(value, typ, literal) => {
-                self.handle_constant_declaration(value, typ, literal, declaration.span);
+                self.handle_constant_declaration(value, typ, literal, &declaration.span);
             }
         }
     }
@@ -50,7 +52,7 @@ impl SemanticAnalyzer {
         value: &str,
         typ: &Type,
         literal: &Literal,
-        span: Span,
+        span: &Range<usize>,
     ) {
         // Check for duplicate declaration
         if self.symbol_table.contains(value) {
@@ -105,7 +107,7 @@ impl SemanticAnalyzer {
         self.symbol_table.add_symbol(symbol);
     }
 
-    fn handle_variable_declaration(&mut self, name: &str, typ: &Type, span: Span) {
+    fn handle_variable_declaration(&mut self, name: &str, typ: &Type, span: &Range<usize>) {
         // Check for duplicate declaration
         if self.symbol_table.contains(name) {
             let existing = self.symbol_table.get(name).unwrap();
@@ -129,7 +131,7 @@ impl SemanticAnalyzer {
         self.symbol_table.add_symbol(symbol);
     }
 
-    fn handle_array_declaration(&mut self, name: &str, typ: &Type, size: usize, span: Span) {
+    fn handle_array_declaration(&mut self, name: &str, typ: &Type, size: usize, span: &Range<usize>) {
         // Check for duplicate declaration
         if self.symbol_table.contains(name) {
             let existing = self.symbol_table.get(name).unwrap();
@@ -148,7 +150,6 @@ impl SemanticAnalyzer {
             value: None,
             line,
             column,
-
             is_constant: false,
         };
 
@@ -160,7 +161,7 @@ impl SemanticAnalyzer {
         name: &str,
         typ: &Type,
         expr: &Expression,
-        span: Span,
+        span: &Range<usize>,
     ) {
         // First, check the expression
         let expr_type = self.analyze_expression(expr);
@@ -181,7 +182,7 @@ impl SemanticAnalyzer {
         typ: &Type,
         size: usize,
         exprs: &[Expression],
-        span: Span,
+        span: &Range<usize>,
     ) {
         // Check that array size matches number of initializers
         if exprs.len() == size {

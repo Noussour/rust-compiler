@@ -49,7 +49,7 @@ impl SemanticAnalyzer {
                 self.handle_output(expressions);
             }
 
-            StatementKind::Block(statements) => {
+            StatementKind::Scope(statements) => {
                 // Analyze all statements in the block
                 self.handle_scope(statements);
             }

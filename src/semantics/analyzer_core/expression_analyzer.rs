@@ -1,4 +1,6 @@
-use crate::parser::ast::{Expression, ExpressionKind, Literal, LiteralKind, Operator, Located, Span, Type, UnaryOperator};
+use std::ops::Range;
+
+use crate::parser::ast::{Expression, ExpressionKind, Literal, LiteralKind, Operator, Located, Type, UnaryOperator};
 use crate::semantics::{analyzer_core::SemanticAnalyzer, symbol_table::SymbolKind};
 
 impl SemanticAnalyzer {
@@ -6,24 +8,24 @@ impl SemanticAnalyzer {
         // Implementation of expression analysis
         match &expr.node {
             ExpressionKind::Identifier(name) => {
-                self.handle_identifier(name, expr.span)
-                    },
+                self.handle_identifier(name, &expr.span)
+            },
             ExpressionKind::ArrayAccess(name, index_expression) => {
-                self.handle_array_access(name, index_expression, expr.span)
-                    },
+                self.handle_array_access(name, index_expression, &expr.span)
+            },
             ExpressionKind::Literal(value) => {
-                self.handle_literal(value, expr.span)
-                    },
+                self.handle_literal(value, &expr.span)
+            },
             ExpressionKind::BinaryOp(left_expression, operator, right_expression) => {
                 self.handle_binary_operation(left_expression, operator, right_expression)
-                    },
+            },
             ExpressionKind::UnaryOp(unary_operator, located) => {
-                self.handle_unary_operation(unary_operator, located, expr.span)
-                    },
+                self.handle_unary_operation(unary_operator, located, &expr.span)
+            },
         }
     }
 
-    fn handle_identifier(&mut self, name: &str, span: Span) -> Option<Type> {
+    fn handle_identifier(&mut self, name: &str, span: &Range<usize>) -> Option<Type> {
         // Check if the identifier exists in the symbol table
         if !self.symbol_table.contains(name) {
             self.undeclared_identifier_error(span, name);
@@ -35,7 +37,7 @@ impl SemanticAnalyzer {
         Some(symbol.symbol_type.clone())
     }
     
-    fn handle_array_access(&mut self, name: &str, index_expression: &Expression, span: Span) -> Option<Type> {
+    fn handle_array_access(&mut self, name: &str, index_expression: &Expression, span: &Range<usize>) -> Option<Type> {
         // Check if the array exists in the symbol table
         if !self.symbol_table.contains(name) {
             self.undeclared_identifier_error(span, name);
@@ -54,7 +56,7 @@ impl SemanticAnalyzer {
                 if let ExpressionKind::Literal(Located { node: LiteralKind::Int(idx), .. }) = &index_expression.node {
                     if *idx < 0 || *idx as usize >= array_size {
                         self.array_index_out_of_bounds_error(
-                            index_expression.span,
+                            &index_expression.span,
                             name,
                             *idx as usize,
                             array_size,
@@ -68,7 +70,7 @@ impl SemanticAnalyzer {
                 if let Some(idx_type) = idx_type {
                     if idx_type != Type::Int {
                         self.type_mismatch_error(
-                            index_expression.span,
+                            &index_expression.span,
                             &Type::Int,
                             &idx_type,
                             Some("array index"),
@@ -88,7 +90,7 @@ impl SemanticAnalyzer {
         }
     }
 
-    fn handle_literal(&mut self, literal: &Literal, span: Span) -> Option<Type> {
+    fn handle_literal(&mut self, literal: &Literal, span: &Range<usize>) -> Option<Type> {
         // Store zero literal positions for division by zero checks
         match literal.node {
             LiteralKind::Int(value) => {
@@ -106,6 +108,7 @@ impl SemanticAnalyzer {
             LiteralKind::String(_) => None, // No string type in MiniSoft
         }
     }
+    
     fn handle_binary_operation(&mut self, left: &Expression, operator: &Operator, right: &Expression) -> Option<Type> {
         // Check the types of left and right operands
         let left_type = self.analyze_expression(left);
@@ -123,7 +126,7 @@ impl SemanticAnalyzer {
                 // Arithmetic operations require numeric types (Int or Float)
                 if left_type != Type::Int && left_type != Type::Float {
                     self.type_mismatch_error(
-                        Span { start: (left.span.start), end: (right.span.end) },
+                        &(left.span.start..right.span.end),
                         &Type::Int,
                         &left_type,
                         Some("arithmetic"),
@@ -132,7 +135,7 @@ impl SemanticAnalyzer {
                 }
                 if right_type != Type::Int && right_type != Type::Float {
                     self.type_mismatch_error(
-                        Span { start: (left.span.start), end: (right.span.end) },
+                        &(left.span.start..right.span.end),
                         &Type::Int,
                         &right_type,
                         Some("arithmetic"),
@@ -141,8 +144,8 @@ impl SemanticAnalyzer {
                 }
 
                 // Division by zero check
-                if *operator == Operator::Divide && right_type == Type::Int && right.node == ExpressionKind::Literal(Located { node: LiteralKind::Int(0), span: right.span }) {
-                    self.division_by_zero_error(Span { start: right.span.start, end: right.span.end });
+                if *operator == Operator::Divide && right_type == Type::Int && right.node == ExpressionKind::Literal(Located { node: LiteralKind::Int(0), span: right.span.clone() }) {
+                    self.division_by_zero_error(&right.span);
                     return None;
                 }
 
@@ -157,7 +160,7 @@ impl SemanticAnalyzer {
                 // Comparison operations require numeric types (Int or Float)
                 if left_type != Type::Int && left_type != Type::Float {
                     self.type_mismatch_error(
-                        Span { start: left.span.start, end: right.span.end },
+                        &(left.span.start..right.span.end),
                         &Type::Int,
                         &left_type,
                         Some("comparison"),
@@ -166,7 +169,7 @@ impl SemanticAnalyzer {
                 }
                 if right_type != Type::Int && right_type != Type::Float {
                     self.type_mismatch_error(
-                        Span { start: left.span.start, end: right.span.end },
+                        &(left.span.start..right.span.end),
                         &Type::Int,
                         &right_type,
                         Some("comparison"),
@@ -181,7 +184,7 @@ impl SemanticAnalyzer {
                 // Logical operations require boolean types (Bool)
                 if left_type != Type::Bool {
                     self.type_mismatch_error(
-                        Span { start: left.span.start, end: right.span.end },
+                        &(left.span.start..right.span.end),
                         &Type::Int,
                         &left_type,
                         Some("logical"),
@@ -190,7 +193,7 @@ impl SemanticAnalyzer {
                 }
                 if right_type != Type::Bool {
                     self.type_mismatch_error(
-                        Span { start: left.span.start, end: right.span.end },
+                        &(left.span.start..right.span.end),
                         &Type::Bool,
                         &right_type,
                         Some("logical"),
@@ -202,10 +205,9 @@ impl SemanticAnalyzer {
                 Some(Type::Bool)
             },
         }
-
     }
 
-    fn handle_unary_operation(&mut self, unary_operator: &UnaryOperator, expression: &Expression, span: Span) -> Option<Type> {
+    fn handle_unary_operation(&mut self, unary_operator: &UnaryOperator, expression: &Expression, span: &Range<usize>) -> Option<Type> {
         // Check the type of the operand
         let expression_type = self.analyze_expression(expression);
         expression_type.as_ref()?;

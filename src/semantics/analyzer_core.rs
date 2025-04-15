@@ -3,11 +3,12 @@ mod statement_analyzer;
 mod expression_analyzer;
 
 
-use crate::parser::ast::{Program, Span, Type};
+use crate::parser::ast::{Program, Type};
 use crate::semantics::error::SemanticError;
 use crate::semantics::source_map::SourceMap;
 use crate::semantics::symbol_table::SymbolTable;
 use std::collections::HashSet;
+use std::ops::Range;
 
 pub struct SemanticAnalyzer {
     symbol_table: SymbolTable,
@@ -54,7 +55,7 @@ impl SemanticAnalyzer {
     // Error helper methods
     fn type_mismatch_error(
         &mut self,
-        span: Span,
+        span: &Range<usize>,
         expected: &Type,
         found: &Type,
         context: Option<&str>,
@@ -68,7 +69,7 @@ impl SemanticAnalyzer {
         });
     }
 
-    fn undeclared_identifier_error(&mut self, span: Span, name: &str) {
+    fn undeclared_identifier_error(&mut self, span: &Range<usize>, name: &str) {
         self.add_error(SemanticError::UndeclaredIdentifier {
             name: name.to_string(),
             line: self.source_map.get_line(span),
@@ -76,7 +77,7 @@ impl SemanticAnalyzer {
         });
     }
 
-    fn constant_modification_error(&mut self, span: Span, name: &str) {
+    fn constant_modification_error(&mut self, span: &Range<usize>, name: &str) {
         self.add_error(SemanticError::ConstantModification {
             name: name.to_string(),
             line: self.source_map.get_line(span),
@@ -86,7 +87,7 @@ impl SemanticAnalyzer {
 
     fn array_index_out_of_bounds_error(
         &mut self,
-        span: Span,
+        span: &Range<usize>,
         name: &str,
         index: usize,
         size: usize,
@@ -100,7 +101,7 @@ impl SemanticAnalyzer {
         });
     }
 
-    fn division_by_zero_error(&mut self, span: Span) {
+    fn division_by_zero_error(&mut self, span: &Range<usize>) {
         self.add_error(SemanticError::DivisionByZero {
             line: self.source_map.get_line(span),
             column: self.source_map.get_column(span),
@@ -109,7 +110,7 @@ impl SemanticAnalyzer {
 
     fn duplicate_declaration_error(
         &mut self,
-        span: Span,
+        span: &Range<usize>,
         name: &str,
         original_line: usize,
         original_column: usize,
