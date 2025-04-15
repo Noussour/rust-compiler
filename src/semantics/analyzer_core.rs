@@ -3,11 +3,12 @@ mod statement_analyzer;
 mod expression_analyzer;
 
 
-use crate::parser::ast::{Program, Span, Type};
+use crate::parser::ast::{Program, Type};
 use crate::semantics::error::SemanticError;
 use crate::semantics::source_map::SourceMap;
 use crate::semantics::symbol_table::SymbolTable;
 use std::collections::HashSet;
+use std::ops::Range;
 
 pub struct SemanticAnalyzer {
     symbol_table: SymbolTable,
@@ -54,7 +55,7 @@ impl SemanticAnalyzer {
     // Error helper methods
     fn type_mismatch_error(
         &mut self,
-        span: Span,
+        span: Range<usize>,
         expected: &Type,
         found: &Type,
         context: Option<&str>,
@@ -62,31 +63,31 @@ impl SemanticAnalyzer {
         self.add_error(SemanticError::TypeMismatch {
             expected: format!("{}", expected),
             found: format!("{}", found),
-            line: self.source_map.get_line(span),
+            line: self.source_map.get_line(span.clone()),
             column: self.source_map.get_column(span),
             context: context.map(|s| s.to_string()),
         });
     }
 
-    fn undeclared_identifier_error(&mut self, span: Span, name: &str) {
+    fn undeclared_identifier_error(&mut self, span: Range<usize>, name: &str) {
         self.add_error(SemanticError::UndeclaredIdentifier {
             name: name.to_string(),
-            line: self.source_map.get_line(span),
+            line: self.source_map.get_line(span.clone()),
             column: self.source_map.get_column(span),
         });
     }
 
-    fn constant_modification_error(&mut self, span: Span, name: &str) {
+    fn constant_modification_error(&mut self, span: Range<usize>, name: &str) {
         self.add_error(SemanticError::ConstantModification {
             name: name.to_string(),
-            line: self.source_map.get_line(span),
+            line: self.source_map.get_line(span.clone()),
             column: self.source_map.get_column(span),
         });
     }
 
     fn array_index_out_of_bounds_error(
         &mut self,
-        span: Span,
+        span: Range<usize>,
         name: &str,
         index: usize,
         size: usize,
@@ -95,28 +96,28 @@ impl SemanticAnalyzer {
             name: name.to_string(),
             index,
             size,
-            line: self.source_map.get_line(span),
+            line: self.source_map.get_line(span.clone()),
             column: self.source_map.get_column(span),
         });
     }
 
-    fn division_by_zero_error(&mut self, span: Span) {
+    fn division_by_zero_error(&mut self, span: Range<usize>) {
         self.add_error(SemanticError::DivisionByZero {
-            line: self.source_map.get_line(span),
+            line: self.source_map.get_line(span.clone()),
             column: self.source_map.get_column(span),
         });
     }
 
     fn duplicate_declaration_error(
         &mut self,
-        span: Span,
+        span: Range<usize>,
         name: &str,
         original_line: usize,
         original_column: usize,
     ) {
         self.add_error(SemanticError::DuplicateDeclaration {
             name: name.to_string(),
-            line: self.source_map.get_line(span),
+            line: self.source_map.get_line(span.clone()),
             column: self.source_map.get_column(span),
             original_line,
             original_column,

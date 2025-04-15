@@ -7,7 +7,7 @@ impl SemanticAnalyzer {
     /// Analyzes a statement
     pub(crate) fn analyze_statement(&mut self, statement: &Statement) {
         match &statement.node {
-            Statement::Block(statements) => {
+            Statement::Scope(statements) => {
                 // Analyze each statement in the block
                 for stmt in statements {
                     self.analyze_statement(stmt);

@@ -1,5 +1,7 @@
+use std::ops::Range;
+
 use crate::parser::ast::{
-    Declaration, DeclarationKind, Expression, Literal, LiteralKind, Span, Type,
+    Declaration, DeclarationKind, Expression, Literal, LiteralKind, Type,
 };
 use crate::semantics::analyzer_core::SemanticAnalyzer;
 use crate::semantics::symbol_table::{Symbol, SymbolKind};
@@ -10,12 +12,12 @@ impl SemanticAnalyzer {
         match &declaration.node {
             DeclarationKind::Variable(items, typ) => {
                 for item in items {
-                    self.handle_variable_declaration(item, typ, declaration.span);
+                    self.handle_variable_declaration(item, typ, declaration.span.clone());
                 }
             }
             DeclarationKind::Array(items, typ, size) => {
                 for item in items {
-                    self.handle_array_declaration(item, typ, *size, declaration.span);
+                    self.handle_array_declaration(item, typ, *size, declaration.span.clone());
                 }
             }
             DeclarationKind::VariableWithInit(items, typ, expression) => {
@@ -24,7 +26,7 @@ impl SemanticAnalyzer {
                         item,
                         typ,
                         expression,
-                        declaration.span,
+                        declaration.span.clone(),
                     );
                 }
             }
@@ -35,12 +37,12 @@ impl SemanticAnalyzer {
                         typ,
                         *size,
                         expressions,
-                        declaration.span,
+                        declaration.span.clone(),
                     );
                 }
             }
             DeclarationKind::Constant(value, typ, literal) => {
-                self.handle_constant_declaration(value, typ, literal, declaration.span);
+                self.handle_constant_declaration(value, typ, literal, declaration.span.clone());
             }
         }
     }
@@ -50,7 +52,7 @@ impl SemanticAnalyzer {
         value: &str,
         typ: &Type,
         literal: &Literal,
-        span: Span,
+        span: Range<usize>,
     ) {
         // Check for duplicate declaration
         if self.symbol_table.contains(value) {
@@ -62,13 +64,13 @@ impl SemanticAnalyzer {
         // Track zero literals for division checks
         match literal.node {
             LiteralKind::Int(n) if n == 0 => {
-                let line = self.source_map.get_line(span);
-                let column = self.source_map.get_column(span);
+                let line = self.source_map.get_line(span.clone());
+                let column = self.source_map.get_column(span.clone());
                 self.zero_literals.push((line, column));
             }
             LiteralKind::Float(f) if f == 0.0 => {
-                let line = self.source_map.get_line(span);
-                let column = self.source_map.get_column(span);
+                let line = self.source_map.get_line(span.clone());
+                let column = self.source_map.get_column(span.clone());
                 self.zero_literals.push((line, column));
             }
             _ => {}
@@ -89,8 +91,8 @@ impl SemanticAnalyzer {
         }
 
         // Add to symbol table
-        let line = self.source_map.get_line(span);
-        let column = self.source_map.get_column(span);
+        let line = self.source_map.get_line(span.clone());
+        let column = self.source_map.get_column(span.clone());
 
         let symbol = Symbol {
             name: value.to_string(),
@@ -105,7 +107,7 @@ impl SemanticAnalyzer {
         self.symbol_table.add_symbol(symbol);
     }
 
-    fn handle_variable_declaration(&mut self, name: &str, typ: &Type, span: Span) {
+    fn handle_variable_declaration(&mut self, name: &str, typ: &Type, span: Range<usize>) {
         // Check for duplicate declaration
         if self.symbol_table.contains(name) {
             let existing = self.symbol_table.get(name).unwrap();
@@ -114,8 +116,8 @@ impl SemanticAnalyzer {
         }
 
         // Add to symbol table
-        let line = self.source_map.get_line(span);
-        let column = self.source_map.get_column(span);
+        let line = self.source_map.get_line(span.clone());
+        let column = self.source_map.get_column(span.clone());
 
         let symbol = Symbol {
             name: name.to_string(),
@@ -129,7 +131,7 @@ impl SemanticAnalyzer {
         self.symbol_table.add_symbol(symbol);
     }
 
-    fn handle_array_declaration(&mut self, name: &str, typ: &Type, size: usize, span: Span) {
+    fn handle_array_declaration(&mut self, name: &str, typ: &Type, size: usize, span: Range<usize>) {
         // Check for duplicate declaration
         if self.symbol_table.contains(name) {
             let existing = self.symbol_table.get(name).unwrap();
@@ -138,7 +140,7 @@ impl SemanticAnalyzer {
         }
 
         // Add to symbol table
-        let line = self.source_map.get_line(span);
+        let line = self.source_map.get_line(span.clone());
         let column = self.source_map.get_column(span);
 
         let symbol = Symbol {
@@ -160,14 +162,14 @@ impl SemanticAnalyzer {
         name: &str,
         typ: &Type,
         expr: &Expression,
-        span: Span,
+        span: Range<usize>,
     ) {
         // First, check the expression
         let expr_type = self.analyze_expression(expr);
 
         if let Some(expr_type) = expr_type {
             if expr_type != *typ {
-                self.type_mismatch_error(span, typ, &expr_type, Some("assignment"));
+                self.type_mismatch_error(span.clone(), typ, &expr_type, Some("assignment"));
             }
         }
 
@@ -181,7 +183,7 @@ impl SemanticAnalyzer {
         typ: &Type,
         size: usize,
         exprs: &[Expression],
-        span: Span,
+        span: Range<usize>,
     ) {
         // Check that array size matches number of initializers
         if exprs.len() == size {
@@ -193,7 +195,7 @@ impl SemanticAnalyzer {
             let value_type = self.analyze_expression(expr);
             if let Some(value_type) = value_type {
                 if value_type != *typ {
-                    self.type_mismatch_error(span, typ, &value_type, Some("array initializer"));
+                    self.type_mismatch_error(span.clone(), typ, &value_type, Some("array initializer"));
                 }
             }
         }

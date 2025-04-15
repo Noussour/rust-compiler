@@ -169,7 +169,7 @@ impl SemanticAnalyzer {
                 }
             }
 
-            StatementKind::Block(statements) => {
+            StatementKind::Scope(statements) => {
                 // Analyze all statements in the block
                 for stmt in statements {
                     self.analyze_statement(stmt);
@@ -181,7 +181,6 @@ impl SemanticAnalyzer {
             }
         }
     }
-
 
     fn get_expression_type(&self, expr: &Expression) -> Option<Type> {
         // Implementation to determine expression type would go here
