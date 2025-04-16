@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod parser_tests {
     use rust_compiler::parser::ast::{
-        Declaration, DeclarationKind, Expression, ExpressionKind, Literal, LiteralKind, Operator,
-        Program, Statement, StatementKind, Type,
+        DeclarationKind, ExpressionKind, LiteralKind, Operator, Program, StatementKind, Type,
     };
     use rust_compiler::parser::parser_core::parse_source;
 

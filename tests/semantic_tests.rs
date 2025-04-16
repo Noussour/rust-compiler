@@ -2,10 +2,9 @@
 mod semantic_tests {
     use rust_compiler::parser::parser_core::parse_source;
     use rust_compiler::semantics::analyzer_core::SemanticAnalyzer;
-    use rust_compiler::semantics::error::SemanticError;
 
-    /// Helper function to analyze code semantically and return errors
-    fn analyze_test(source: &str) -> Vec<SemanticError> {
+    /// Helper function to analyze code semantically and return error messages as strings
+    fn analyze_test(source: &str) -> Vec<String> {
         // First parse the code to get an AST
         let program = match parse_source(source) {
             Ok(program) => program,
@@ -18,16 +17,19 @@ mod semantic_tests {
         // Analyze the program
         analyzer.analyze(&program);
 
-        // Return the errors detected
-        analyzer.get_errors().to_vec()
+        // Instead of cloning SemanticError (which is not Clone), collect their Debug strings.
+        analyzer
+            .get_errors()
+            .iter()
+            .map(|e| format!("{:?}", e))
+            .collect()
     }
 
-    /// Helper to check if errors match expected patterns
-    fn contains_error_of_type(errors: &[SemanticError], error_type: &str) -> bool {
-        errors.iter().any(|e| {
-            let error_str = format!("{:?}", e);
-            error_str.contains(error_type)
-        })
+    /// Helper to check if errors match expected patterns (now operating on error messages)
+    fn contains_error_of_type(errors: &[String], error_type: &str) -> bool {
+        errors
+            .iter()
+            .any(|error_str| error_str.contains(error_type))
     }
 
     #[test]
