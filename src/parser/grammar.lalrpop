@@ -180,15 +180,9 @@ Statement: Located<StatementKind> = {
             span: l..r,
         }
     },
-    <l:@L> "for" <var:Id> "from" <from:Expression> "to" <to:Expression> "step" <step:Expression> <body:Scope> <r:@R> => {
+    <l:@L> "for" <var:LValue> "from" <from:Expression> "to" <to:Expression> "step" <step:Expression> <body:Scope> <r:@R> => {
         Located {
-            node: StatementKind::For(
-                var, 
-                from, 
-                to, 
-                step, 
-                body
-            ),
+            node: StatementKind::For(var, from, to, step, body),
             span: l..r,
         }
     },
@@ -404,6 +398,55 @@ OutputExpression: Located<ExpressionKind> = {
             node: ExpressionKind::Literal(string_literal),
             span: l..r,
         }
-    }, // Add this comma
-    <expr:Expression> => expr,
+    },
+    // Include arithmetic expressions
+    OutputAdditiveExpr,
+};
+
+OutputAdditiveExpr: Located<ExpressionKind> = {
+    <l:@L> <lhs:OutputAdditiveExpr> "+" <rhs:OutputMultiplicativeExpr> <r:@R> => {
+        Located {
+            node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Add, Box::new(rhs)),
+            span: l..r,
+        }
+    },
+    <l:@L> <lhs:OutputAdditiveExpr> "-" <rhs:OutputMultiplicativeExpr> <r:@R> => {
+        Located {
+            node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Subtract, Box::new(rhs)),
+            span: l..r,
+        }
+    },
+    OutputMultiplicativeExpr,
+};
+
+OutputMultiplicativeExpr: Located<ExpressionKind> = {
+    <l:@L> <lhs:OutputMultiplicativeExpr> "*" <rhs:OutputPrimaryExpr> <r:@R> => {
+        Located {
+            node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Multiply, Box::new(rhs)),
+            span: l..r,
+        }
+    },
+    <l:@L> <lhs:OutputMultiplicativeExpr> "/" <rhs:OutputPrimaryExpr> <r:@R> => {
+        Located {
+            node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Divide, Box::new(rhs)),
+            span: l..r,
+        }
+    },
+    OutputPrimaryExpr,
+};
+
+OutputPrimaryExpr: Located<ExpressionKind> = {
+    <l:@L> <id:Id> <r:@R> => Located {
+        node: ExpressionKind::Identifier(id),
+        span: l..r,
+    },
+    <l:@L> <id:Id> "[" <idx:Expression> "]" <r:@R> => Located {
+        node: ExpressionKind::ArrayAccess(id, Box::new(idx)),
+        span: l..r,
+    },
+    <l:@L> <lit:LiteralValue> <r:@R> => Located {
+        node: ExpressionKind::Literal(lit),
+        span: l..r,
+    },
+    "(" <expr:OutputAdditiveExpr> ")" => expr,
 };

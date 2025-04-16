@@ -24,7 +24,7 @@ impl Compiler {
 
     pub fn run(&mut self) -> Result<(), i32> {
         println!("Compiling file: {}", self.file_path);
-        // self.print_source_code();
+        self.print_source_code();
 
         // Step 1: Lexical Analysis
         let tokens = match self.perform_lexical_analysis() {
@@ -39,9 +39,9 @@ impl Compiler {
         };
 
         // Step 3: Semantic Analysis
-        // if let Err(exit_code) = self.perform_semantic_analysis(&ast) {
-        //     return Err(exit_code);
-        // }
+        if let Err(exit_code) = self.perform_semantic_analysis(&ast) {
+            return Err(exit_code);
+        }
         Ok(())
     }
 
@@ -57,7 +57,7 @@ impl Compiler {
             return Err(1);
         }
 
-        // self.print_tokens(&valid_tokens);
+        self.print_tokens(&valid_tokens);
         println!(
             "{}",
             "Lexical analysis completed successfully.".green().bold()

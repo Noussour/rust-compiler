@@ -61,10 +61,6 @@ impl SemanticAnalyzer {
     }
 
     fn handle_assignment(&mut self, left_expression: &Expression, right_expression: &Expression) {
-        // Analyze both sides of the assignment
-        let left_type = self.analyze_expression(left_expression);
-        let right_type = self.analyze_expression(right_expression);
-
         if let ExpressionKind::Identifier(_) | ExpressionKind::ArrayAccess(_, _) =
             &left_expression.node
         {
@@ -72,22 +68,19 @@ impl SemanticAnalyzer {
             if let ExpressionKind::Identifier(name) = &left_expression.node {
                 if let Some(symbol) = self.symbol_table.get(name) {
                     if symbol.is_constant {
-                        self.constant_modification_error(left_expression.span, name);
+                        self.constant_modification_error(&left_expression.span, name);
                     }
                 }
             }
-        }
-        // Check if left side is assignable
-        if let ExpressionKind::Identifier(name) = &left_expression.node {
-            if let Some(symbol) = self.symbol_table.get(name) {
-                if symbol.is_constant {
-                    self.constant_modification_error(left_expression.span, name);
-                }
-            }
+
+            // Analyze both sides of the assignment
+            let left_type = self.analyze_expression(left_expression);
+            let right_type = self.analyze_expression(right_expression);
+
             if let (Some(left_type), Some(right_type)) = (left_type, right_type) {
-                if left_type != right_type {
+                if !right_type.is_compatible_with(&left_type) {
                     self.type_mismatch_error(
-                        left_expression.span,
+                        &left_expression.span,
                         &left_type,
                         &right_type,
                         Some("assignment"),
@@ -95,7 +88,6 @@ impl SemanticAnalyzer {
                 }
             }
         }
-
     }
 
     fn handle_condition(&mut self, condition: &Expression, context: Option<&str>) {
@@ -105,7 +97,7 @@ impl SemanticAnalyzer {
         // Ensure the condition is boolean
         if let Some(cond_type) = condition_type {
             if cond_type != Type::Bool {
-                self.type_mismatch_error(condition.span, &Type::Bool, &cond_type, context);
+                self.type_mismatch_error(&condition.span, &Type::Bool, &cond_type, context);
             }
         }
     }
@@ -129,7 +121,7 @@ impl SemanticAnalyzer {
         if let Some(iterator_type) = iterator_type {
             if iterator_type != Type::Int {
                 self.type_mismatch_error(
-                    iterator.span,
+                    &iterator.span,
                     &Type::Int,
                     &iterator_type,
                     Some("for loop iterator"),
@@ -142,7 +134,7 @@ impl SemanticAnalyzer {
         if let Some(init_type) = init_type {
             if init_type != Type::Int {
                 self.type_mismatch_error(
-                    init.span,
+                    &init.span,
                     &Type::Int,
                     &init_type,
                     Some("for loop initialization"),
@@ -154,7 +146,7 @@ impl SemanticAnalyzer {
         if let Some(end_type) = end_type {
             if end_type != Type::Int {
                 self.type_mismatch_error(
-                    end.span,
+                    &end.span,
                     &Type::Int,
                     &end_type,
                     Some("for loop end condition"),
@@ -165,7 +157,7 @@ impl SemanticAnalyzer {
         let step_type = self.analyze_expression(step);
         if let Some(step_type) = step_type {
             if step_type != Type::Int {
-                self.type_mismatch_error(step.span, &Type::Int, &step_type, Some("for loop step"));
+                self.type_mismatch_error(&step.span, &Type::Int, &step_type, Some("for loop step"));
             }
         }
 
@@ -183,10 +175,8 @@ impl SemanticAnalyzer {
         {
             if let Some(symbol) = self.symbol_table.get(name) {
                 if symbol.is_constant {
-                    self.constant_modification_error(target.span, name);
+                    self.constant_modification_error(&target.span, name);
                 }
-            } else {
-                self.undeclared_identifier_error(target.span, name);
             }
         }
     }
@@ -195,12 +185,6 @@ impl SemanticAnalyzer {
         for expr in expressions {
             // Analyze the expression
             let _expr_type = self.analyze_expression(expr);
-
-            // Check if the expression is a valid identifier
-            if let ExpressionKind::Identifier(name)
-            | ExpressionKind::ArrayAccess(name, _)
-            | ExpressionKind::Literal(_) = &expr.node
-            {}
         }
     }
 }

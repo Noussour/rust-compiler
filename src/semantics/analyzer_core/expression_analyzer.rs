@@ -144,7 +144,7 @@ impl SemanticAnalyzer {
                 }
 
                 // Division by zero check
-                if *operator == Operator::Divide && right_type == Type::Int && right.node == ExpressionKind::Literal(Located { node: LiteralKind::Int(0), span: right.span.clone() }) {
+                if *operator == Operator::Divide  && (right.node == ExpressionKind::Literal(Located { node: LiteralKind::Int(0), span: right.span.clone() }) || right.node == ExpressionKind::Literal(Located { node: LiteralKind::Float(0.0), span: right.span.clone() })) {
                     self.division_by_zero_error(&right.span);
                     return None;
                 }

@@ -48,6 +48,26 @@ impl Default for Type {
     }
 }
 
+impl Type {
+    /// Determines if `self` can be implicitly converted to `target`.
+    /// Returns true if the types are compatible for assignment or operation.
+    pub fn is_compatible_with(&self, target: &Type) -> bool {
+        match (self, target) {
+            // Same types are always compatible
+            (Type::Int, Type::Int) => true,
+            (Type::Float, Type::Float) => true,
+            (Type::Bool, Type::Bool) => true,
+            (Type::String, Type::String) => true,
+            
+            // Int can be converted to Float
+            (Type::Int, Type::Float) => true,
+            
+            // All other combinations are incompatible
+            _ => false,
+        }
+    }
+}
+
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
