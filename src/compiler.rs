@@ -5,10 +5,13 @@ use crate::parser::parser_core::parse;
 use crate::semantics::{SemanticAnalyzer, symbol_table::SymbolKind};
 use colored::*;
 use std::fs;
+use crate::codegen::code_generator::CodeGenerator;
+use crate::codegen::quadruple::QuadrupleProgram;
 
 pub struct Compiler {
     source_code: String,
     file_path: String,
+    quadruples: Option<QuadrupleProgram>, // Add this field
 }
 
 impl Compiler {
@@ -17,6 +20,7 @@ impl Compiler {
             Ok(content) => Ok(Self {
                 source_code: content,
                 file_path: file_path.to_string(),
+                quadruples: None, // Initialize as None
             }),
             Err(e) => Err(format!("Error reading file '{}': {}", file_path, e)),
         }
@@ -42,6 +46,12 @@ impl Compiler {
         if let Err(exit_code) = self.perform_semantic_analysis(&ast) {
             return Err(exit_code);
         }
+        
+        // Step 4: Code Generation (add this)
+        if let Err(exit_code) = self.perform_code_generation(&ast) {
+            return Err(exit_code);
+        }
+        
         Ok(())
     }
 
@@ -109,8 +119,34 @@ impl Compiler {
             Ok(())
         }
     }
-
     
+    // Add this new method
+    fn perform_code_generation(&mut self, program: &Program) -> Result<(), i32> {
+        println!("\n{}", "Code Generation:".bold().underline());
+        
+        let mut code_generator = CodeGenerator::new();
+        let quadruple_program = code_generator.generate_code(program);
+        
+        // Store the generated quadruples
+        self.quadruples = Some(quadruple_program.clone());
+        
+        // Print the generated quadruples
+        self.print_quadruples();
+        
+        println!("{}", "Code generation completed successfully.".green());
+        Ok(())
+    }
+    
+    // Add this method to display quadruples
+    fn print_quadruples(&self) {
+        if let Some(quadruples) = &self.quadruples {
+            println!("{}", "Generated Quadruples:".bold().underline());
+            for (i, quad) in quadruples.quadruples.iter().enumerate() {
+                println!("{}: {}", i, quad);
+            }
+        }
+    }
+
     fn print_source_code(&self) {
         println!("{}", "Source code:".bold().underline());
         println!("{}\n", self.source_code);
