@@ -75,19 +75,15 @@ impl SemanticAnalyzer {
             }
             _ => {}
         }
-
-        // Validate literal type matches declared type
-        let value_type = match literal.node {
-            LiteralKind::Int(_) => Type::Int,
-            LiteralKind::Float(_) => Type::Float,
-            LiteralKind::String(_) => {
-                return;
-            }
-        };
-
-        if value_type != *typ {
-            self.type_mismatch_error(span, typ, &value_type, Some("constant"));
-            return;
+        
+        match &literal.node {
+            LiteralKind::Int(_) if !typ.is_compatible_with(&Type::Int) => {
+                self.type_mismatch_error(span, typ, &Type::Int, Some("constant"));
+            },
+            LiteralKind::Float(_) if !typ.is_compatible_with(&Type::Float) => {
+                self.type_mismatch_error(span, typ, &Type::Float, Some("constant"));
+            },
+            _ => {}
         }
 
         // Add to symbol table
@@ -167,7 +163,7 @@ impl SemanticAnalyzer {
         let expr_type = self.analyze_expression(expr);
 
         if let Some(expr_type) = expr_type {
-            if expr_type != *typ {
+            if !expr_type.is_compatible_with(typ) {
                 self.type_mismatch_error(span, typ, &expr_type, Some("assignment"));
             }
         }
@@ -193,7 +189,7 @@ impl SemanticAnalyzer {
         for expr in exprs {
             let value_type = self.analyze_expression(expr);
             if let Some(value_type) = value_type {
-                if value_type != *typ {
+                if !value_type.is_compatible_with(typ) {
                     self.type_mismatch_error(span, typ, &value_type, Some("array initializer"));
                 }
             }

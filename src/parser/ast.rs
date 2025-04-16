@@ -112,6 +112,16 @@ pub enum LiteralKind {
     String(String),
 }
 
+impl LiteralKind {
+    pub fn literal_kind_to_type(&self) -> Type {
+        match self {
+            LiteralKind::Int(_) => Type::Int,
+            LiteralKind::Float(_) => Type::Float,
+            LiteralKind::String(_) => Type::String,
+        }
+    }
+}
+
 pub type Literal = Located<LiteralKind>;
 
 /// Binary operators

@@ -1,7 +1,8 @@
 MainPrgm L3_software;
 Var
   <!- Variable declarations -!>
-  let counter, sum, average: Float;
+  let counter: Int;
+  let  sum, average: Float;
   let temperatures: [Float; 10];
   @define Const Max_temp: Float = (+100.0);
   @define Const Min_temp: Float = (-0.0);
@@ -13,7 +14,7 @@ Var
 
   let i: Int;
 
-  let x, z: Int;
+  let x, z: Float;
   let y: Float;
 
 BeginPg
@@ -48,7 +49,7 @@ BeginPg
         temperatures[i] := Min_temp;
       }
       <!- TODO: Confirm that putting non boolean variable alone is valid condition -!>
-      if (i) then {
+      if (i == 1) then {
       }
     }
     
