@@ -1,14 +1,14 @@
 MainPrgm L3_software;
 Var
   <!- Variable declarations -!>
-  let counter, sum, average: Int;
+  let counter, sum, average: Float;
   let temperatures: [Float; 10];
   @define Const Max_temp: Float = (+100.0);
   @define Const Min_temp: Float = (-0.0);
   @define Const Default_temp: Float = 25.5;
   let test_value1: Int = (+42);
   let test_array1: [Float; 3] = {(-4.34), (+23.23), 19.0};
-  let result: Int = 0;
+  let result: Float = 0;
   let result2: Float = 0.0;
 
   let i: Int;
