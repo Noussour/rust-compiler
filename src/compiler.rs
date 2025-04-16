@@ -110,12 +110,11 @@ impl Compiler {
         }
     }
 
-    
     fn print_source_code(&self) {
         println!("{}", "Source code:".bold().underline());
         println!("{}\n", self.source_code);
     }
-    
+
     fn print_tokens(&self, tokens: &[TokenWithMetaData]) {
         println!("{}", "Tokens:".bold().underline());
         for token_with_pos in tokens {
@@ -126,9 +125,9 @@ impl Compiler {
                 token_with_pos.line, token_with_pos.column
             )
             .blue();
-        
-        println!(
-            "{}  →  {}  {}  [span: {}]",
+
+            println!(
+                "{}  →  {}  {}  [span: {}]",
                 token_name,
                 token_value,
                 position,
@@ -151,13 +150,13 @@ impl Compiler {
                 SymbolKind::Constant => "Constant".yellow(),
                 SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
             };
-    
+
             let value = if let Some(val) = &symbol.value {
                 format!("{:?}", val).green()
             } else {
                 "<uninitialized>".dimmed()
             };
-    
+
             println!(
                 "{} {} {} = {} (line {}, col {})",
                 kind,

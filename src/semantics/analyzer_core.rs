@@ -3,7 +3,8 @@ mod statement_analyzer;
 mod expression_analyzer;
 
 
-use crate::parser::ast::{Program, Type};
+
+use crate::parser::ast::{Program, Type, Expression, ExpressionKind, Operator, LiteralKind};
 use crate::semantics::error::SemanticError;
 use crate::semantics::source_map::SourceMap;
 use crate::semantics::symbol_table::SymbolTable;
@@ -15,28 +16,15 @@ pub struct SemanticAnalyzer {
     errors: Vec<SemanticError>,
     reported_errors: HashSet<String>,
     source_map: SourceMap,
-    zero_literals: Vec<(usize, usize)>, // For tracking division by zero
 }
 
 impl SemanticAnalyzer {
-    pub fn new() -> Self {
-        // Create with an empty source map
-        SemanticAnalyzer {
-            symbol_table: SymbolTable::new(),
-            errors: Vec::new(),
-            reported_errors: HashSet::new(),
-            source_map: SourceMap::new(String::new()),
-            zero_literals: Vec::new(),
-        }
-    }
-
     pub fn new_with_source_code(source_code: String) -> Self {
         SemanticAnalyzer {
             symbol_table: SymbolTable::new(),
             errors: Vec::new(),
             reported_errors: HashSet::new(),
             source_map: SourceMap::new(source_code),
-            zero_literals: Vec::new(),
         }
     }
 
@@ -141,5 +129,58 @@ impl SemanticAnalyzer {
 
     pub fn get_symbol_table(&self) -> &SymbolTable {
         &self.symbol_table
+    }
+
+    pub fn evaluate_constant_expression(&mut self, expr: &Expression) -> Option<LiteralKind> {
+        match &expr.node {
+            ExpressionKind::Literal(lit) => {
+                Some(lit.node.clone())},
+            
+            ExpressionKind::Identifier(name) => {
+                if let Some(symbol) = self.symbol_table.get(name) {
+                    if symbol.is_constant {
+                        return symbol.value.clone();
+                    }
+                }
+                None
+            }
+            ExpressionKind::BinaryOp(left, op, right) => {
+                let left_val = self.evaluate_constant_expression(left)?;
+                let right_val = self.evaluate_constant_expression(right)?;
+
+                match (left_val, right_val) {
+                    (LiteralKind::Int(l), LiteralKind::Int(r)) => match op {
+                        Operator::Add => Some(LiteralKind::Int(l + r)),
+                        Operator::Subtract => Some(LiteralKind::Int(l - r)),
+                        Operator::Multiply => Some(LiteralKind::Int(l * r)),
+                        Operator::Divide => {
+                            if r == 0 {
+                                self.division_by_zero_error(&right.span);
+                                None
+                            } else {
+                                Some(LiteralKind::Int(l / r))
+                            }
+                        }
+                        _ => None,
+                    },
+                    (LiteralKind::Float(l), LiteralKind::Float(r)) => match op {
+                        Operator::Add => Some(LiteralKind::Float(l + r)),
+                        Operator::Subtract => Some(LiteralKind::Float(l - r)),
+                        Operator::Multiply => Some(LiteralKind::Float(l * r)),
+                        Operator::Divide => {
+                            if r == 0.0 {
+                                self.division_by_zero_error(&right.span);
+                                None
+                            } else {
+                                Some(LiteralKind::Float(l / r))
+                            }
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 }

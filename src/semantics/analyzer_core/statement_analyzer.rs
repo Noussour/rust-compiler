@@ -78,11 +78,11 @@ impl SemanticAnalyzer {
             let right_type = self.analyze_expression(right_expression);
 
             if let (Some(left_type), Some(right_type)) = (left_type, right_type) {
-                if !right_type.is_compatible_with(&left_type) {
+                if !right_type.get_type().is_compatible_with(&left_type.get_type()) {
                     self.type_mismatch_error(
                         &left_expression.span,
-                        &left_type,
-                        &right_type,
+                        &left_type.get_type(),
+                        &right_type.get_type(),
                         Some("assignment"),
                     );
                 }
@@ -97,7 +97,7 @@ impl SemanticAnalyzer {
         // Ensure the condition is boolean
         if let Some(cond_type) = condition_type {
             if cond_type != Type::Bool {
-                self.type_mismatch_error(&condition.span, &Type::Bool, &cond_type, context);
+                self.type_mismatch_error(&condition.span, &Type::Bool, &cond_type.get_type(), context);
             }
         }
     }
@@ -123,7 +123,7 @@ impl SemanticAnalyzer {
                 self.type_mismatch_error(
                     &iterator.span,
                     &Type::Int,
-                    &iterator_type,
+                    &iterator_type.get_type(),
                     Some("for loop iterator"),
                 );
             }
@@ -136,7 +136,7 @@ impl SemanticAnalyzer {
                 self.type_mismatch_error(
                     &init.span,
                     &Type::Int,
-                    &init_type,
+                    &init_type.get_type(),
                     Some("for loop initialization"),
                 );
             }
@@ -148,7 +148,7 @@ impl SemanticAnalyzer {
                 self.type_mismatch_error(
                     &end.span,
                     &Type::Int,
-                    &end_type,
+                    &end_type.get_type(),
                     Some("for loop end condition"),
                 );
             }
@@ -157,7 +157,12 @@ impl SemanticAnalyzer {
         let step_type = self.analyze_expression(step);
         if let Some(step_type) = step_type {
             if step_type != Type::Int {
-                self.type_mismatch_error(&step.span, &Type::Int, &step_type, Some("for loop step"));
+                self.type_mismatch_error(
+                    &step.span,
+                    &Type::Int,
+                    &step_type.get_type(),
+                    Some("for loop step"),
+                );
             }
         }
 

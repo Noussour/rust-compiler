@@ -60,21 +60,6 @@ impl SemanticAnalyzer {
             self.duplicate_declaration_error(span, value, existing.line, existing.column);
             return;
         }
-
-        // Track zero literals for division checks
-        match literal.node {
-            LiteralKind::Int(n) if n == 0 => {
-                let line = self.source_map.get_line(span);
-                let column = self.source_map.get_column(span);
-                self.zero_literals.push((line, column));
-            }
-            LiteralKind::Float(f) if f == 0.0 => {
-                let line = self.source_map.get_line(span);
-                let column = self.source_map.get_column(span);
-                self.zero_literals.push((line, column));
-            }
-            _ => {}
-        }
         
         match &literal.node {
             LiteralKind::Int(_) if !typ.is_compatible_with(&Type::Int) => {
@@ -163,8 +148,8 @@ impl SemanticAnalyzer {
         let expr_type = self.analyze_expression(expr);
 
         if let Some(expr_type) = expr_type {
-            if !expr_type.is_compatible_with(typ) {
-                self.type_mismatch_error(span, typ, &expr_type, Some("assignment"));
+            if !expr_type.get_type().is_compatible_with(typ) {
+                self.type_mismatch_error(span, typ, &expr_type.get_type(), Some("assignment"));
             }
         }
 
@@ -189,8 +174,8 @@ impl SemanticAnalyzer {
         for expr in exprs {
             let value_type = self.analyze_expression(expr);
             if let Some(value_type) = value_type {
-                if !value_type.is_compatible_with(typ) {
-                    self.type_mismatch_error(span, typ, &value_type, Some("array initializer"));
+                if !value_type.get_type().is_compatible_with(typ) {
+                    self.type_mismatch_error(span, typ, &value_type.get_type(), Some("array initializer"));
                 }
             }
         }
