@@ -1,12 +1,12 @@
+use crate::codegen::generator::CodeGenerator;
+use crate::codegen::quadruple::QuadrupleProgram;
 use crate::error_reporter::ErrorReportFormatter;
-use crate::lexer::lexer_core::{TokenWithMetaData, tokenize};
+use crate::lexer::lexer_core::{tokenize, TokenWithMetaData};
 use crate::parser::ast::Program;
 use crate::parser::parser_core::parse;
-use crate::semantics::{SemanticAnalyzer, symbol_table::SymbolKind};
+use crate::semantics::{symbol_table::SymbolKind, SemanticAnalyzer};
 use colored::*;
 use std::fs;
-use crate::codegen::code_generator::CodeGenerator;
-use crate::codegen::quadruple::QuadrupleProgram;
 
 pub struct Compiler {
     source_code: String,
@@ -31,27 +31,17 @@ impl Compiler {
         self.print_source_code();
 
         // Step 1: Lexical Analysis
-        let tokens = match self.perform_lexical_analysis() {
-            Ok(tokens) => tokens,
-            Err(exit_code) => return Err(exit_code),
-        };
+        let tokens = self.perform_lexical_analysis()?;
 
         // Step 2: Syntax Analysis
-        let ast = match self.perform_syntax_analysis(tokens) {
-            Ok(ast) => ast,
-            Err(exit_code) => return Err(exit_code),
-        };
+        let ast = self.perform_syntax_analysis(tokens)?;
 
         // Step 3: Semantic Analysis
-        if let Err(exit_code) = self.perform_semantic_analysis(&ast) {
-            return Err(exit_code);
-        }
-        
-        // Step 4: Code Generation (add this)
-        if let Err(exit_code) = self.perform_code_generation(&ast) {
-            return Err(exit_code);
-        }
-        
+        self.perform_semantic_analysis(&ast)?;
+
+        // Step 4: Code Generation
+        self.perform_code_generation(&ast)?;
+
         Ok(())
     }
 
@@ -119,24 +109,24 @@ impl Compiler {
             Ok(())
         }
     }
-    
+
     // Add this new method
     fn perform_code_generation(&mut self, program: &Program) -> Result<(), i32> {
         println!("\n{}", "Code Generation:".bold().underline());
-        
+
         let mut code_generator = CodeGenerator::new();
         let quadruple_program = code_generator.generate_code(program);
-        
+
         // Store the generated quadruples
         self.quadruples = Some(quadruple_program.clone());
-        
+
         // Print the generated quadruples
         self.print_quadruples();
-        
+
         println!("{}", "Code generation completed successfully.".green());
         Ok(())
     }
-    
+
     // Add this method to display quadruples
     fn print_quadruples(&self) {
         if let Some(quadruples) = &self.quadruples {
@@ -151,7 +141,7 @@ impl Compiler {
         println!("{}", "Source code:".bold().underline());
         println!("{}\n", self.source_code);
     }
-    
+
     fn print_tokens(&self, tokens: &[TokenWithMetaData]) {
         println!("{}", "Tokens:".bold().underline());
         for token_with_pos in tokens {
@@ -162,9 +152,9 @@ impl Compiler {
                 token_with_pos.line, token_with_pos.column
             )
             .blue();
-        
-        println!(
-            "{}  →  {}  {}  [span: {}]",
+
+            println!(
+                "{}  →  {}  {}  [span: {}]",
                 token_name,
                 token_value,
                 position,
@@ -187,13 +177,13 @@ impl Compiler {
                 SymbolKind::Constant => "Constant".yellow(),
                 SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
             };
-    
+
             let value = if let Some(val) = &symbol.value {
                 format!("{:?}", val).green()
             } else {
                 "<uninitialized>".dimmed()
             };
-    
+
             println!(
                 "{} {} {} = {} (line {}, col {})",
                 kind,
