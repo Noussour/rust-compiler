@@ -3,6 +3,7 @@ Var
   <!- Variable declarations with errors -!>
   let x,x  : Int = 0;  <!- Error: Double declaration of identifier 'x' -!>
   let y : Int = 5;
+  let z : Int = 2000;
 
 BeginPg
 {

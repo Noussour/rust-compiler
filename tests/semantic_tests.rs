@@ -3,7 +3,6 @@ mod semantic_tests {
     use rust_compiler::parser::parser_core::parse_source;
     use rust_compiler::semantics::analyzer_core::SemanticAnalyzer;
     use rust_compiler::semantics::error::SemanticError;
-    use std::collections::HashMap;
 
     /// Helper function to analyze code semantically and return errors
     fn analyze_test(source: &str) -> Vec<SemanticError> {
@@ -13,8 +12,8 @@ mod semantic_tests {
             Err(e) => panic!("Parse error: {}", e),
         };
 
-        // Create a semantic analyzer with empty position info
-        let mut analyzer = SemanticAnalyzer::new_with_positions(HashMap::new());
+        // Create a semantic analyzer with empty source code info
+        let mut analyzer = SemanticAnalyzer::new_with_source_code(String::new());
 
         // Analyze the program
         analyzer.analyze(&program);

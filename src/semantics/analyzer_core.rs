@@ -123,7 +123,7 @@ impl SemanticAnalyzer {
     }
 
 
-    pub fn get_errors(&self) -> &[SemanticError] {
+    pub fn get_errors(&self) -> &Vec<SemanticError> {
         &self.errors
     }
 
