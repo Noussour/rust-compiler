@@ -3,7 +3,11 @@ use logos::Logos;
 use std::fmt;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(extras = Line)]
 pub enum Token {
+    #[regex(r"[ \t\f\r]+", logos::skip)]
+    #[regex(r"\n", newline_callback)]
+
     // Language keywords
     #[token("MainPrgm")]
     MainPrgm,
@@ -109,6 +113,7 @@ pub enum Token {
     Not,
 
     // Literals
+<<<<<<< HEAD
     #[regex("(\\([+-][0-9]+\\))|([0-9]+)", |lex| {
         let s = lex.slice();
         let parsed: Option<i32> = if s.starts_with('(') {
@@ -119,32 +124,18 @@ pub enum Token {
         
         parsed.filter(|&val| (-32768..=32767).contains(&val))
     })]
+=======
+    #[regex("(\\([+-][0-9]+\\))|([0-9]+)", parse_int_literal)]
+>>>>>>> Adel
     IntLiteral(i32),
 
-    #[regex("(\\([+-][0-9]+\\.[0-9]+\\))|([0-9]+\\.[0-9]+)", |lex| {
-        let s = lex.slice();
-        if s.starts_with('(') {
-            s[1..s.len()-1].parse().ok()
-        } else {
-            s.parse().ok()
-        }
-    })]
+    #[regex("(\\([+-][0-9]+\\.[0-9]+\\))|([0-9]+\\.[0-9]+)", parse_float_literal)]
     FloatLiteral(f32),
 
-    #[regex("\"[^\"]*\"", |lex| {
-        let s = lex.slice();
-        Some(s[1..s.len()-1].to_string())
-    })]
+    #[regex("\"[^\"]*\"", parse_string_literal)]
     StringLiteral(String),
 
-    #[regex("[a-zA-Z][a-z0-9_]*", |lex| {
-        let s = lex.slice();
-        if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") {
-            Some(s.to_string())
-        } else {
-            None
-        }
-    })]
+    #[regex("[a-zA-Z][a-zA-Z0-9_]*", parse_identifier)]
     Identifier(String),
 
     // Ignored tokens
@@ -152,8 +143,6 @@ pub enum Token {
     #[regex("\\{--([^-]|(-[^-]))*--\\}", logos::skip)]
     Comment,
 
-    #[regex(r"[ \t\n\r]+", logos::skip)]
-    Whitespace,
 
     Error,
 }
@@ -168,4 +157,60 @@ impl fmt::Display for Token {
             _ => write!(f, "{:?}", self),
         }
     }
+}
+
+
+fn parse_int_literal(lex: &mut logos::Lexer<Token>) -> Option<i32> {
+    let s = lex.slice();
+    if s.starts_with('(') {
+        s[1..s.len()-1].parse().ok()
+    } else {
+        s.parse().ok()
+    }
+}
+
+fn parse_float_literal(lex: &mut logos::Lexer<Token>) -> Option<f32> {
+    let s = lex.slice();
+    if s.starts_with('(') {
+        s[1..s.len()-1].parse().ok()
+    } else {
+        s.parse().ok()
+    }
+}
+
+fn parse_string_literal(lex: &mut logos::Lexer<Token>) -> Option<String> {
+    let s = lex.slice();
+    Some(s[1..s.len()-1].to_string())
+}
+
+fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
+    let s = lex.slice();
+    // Check if identifier contains uppercase letters (after the first character)
+    let has_uppercase_after_first = s.chars().skip(1).any(|c| c.is_ascii_uppercase());
+    
+    if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") && !has_uppercase_after_first {
+        Some(s.to_string())
+    } else {
+        None
+    }
+}
+
+pub struct Line {
+    pub line_number: usize,
+    pub line_start: usize,
+}
+
+impl Default for Line {
+    fn default() -> Self {
+        Line {
+            line_number: 1,
+            line_start: 0,
+        }
+    }
+}
+
+fn newline_callback(lex: &mut logos::Lexer<Token>) -> logos::Skip {
+    lex.extras.line_number += 1;
+    lex.extras.line_start = lex.span().end;
+    logos::Skip
 }

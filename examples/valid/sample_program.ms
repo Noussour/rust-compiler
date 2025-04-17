@@ -1,19 +1,20 @@
 MainPrgm L3_software;
 Var
   <!- Variable declarations -!>
-  let counter, sum, average: Int;
+  let counter: Int;
+  let  sum, average: Float;
   let temperatures: [Float; 10];
   @define Const Max_temp: Float = (+100.0);
   @define Const Min_temp: Float = (-0.0);
   @define Const Default_temp: Float = 25.5;
   let test_value1: Int = (+42);
-  let test_array1: [Float; 3] = { (-4.34), (+23.23), 19.0};
-  let result: Int = 0;
+  let test_array1: [Float; 3] = {(-4.34), (+23.23), 19.0};
+  let result: Float = 0;
   let result2: Float = 0.0;
 
   let i: Int;
 
-  let x, z: Int;
+  let x, z: Float;
   let y: Float;
 
 BeginPg
@@ -48,7 +49,7 @@ BeginPg
         temperatures[i] := Min_temp;
       }
       <!- TODO: Confirm that putting non boolean variable alone is valid condition -!>
-      if (i) then {
+      if (i == 1) then {
       }
     }
     
@@ -72,7 +73,7 @@ BeginPg
   if ((average >= 50.0) AND (average <= (+75.0))) then {
     output("Average temperature is within safe operating range.");
   } else {
-    output("Warning: Average temperature is outside safe operating range!");
+    output("Warningط: Average temperature is outside safe operating range!");
   }
 
   <!- Test operations priority -!>

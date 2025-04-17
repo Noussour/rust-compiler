@@ -1,13 +1,16 @@
 #[cfg(test)]
 mod parser_tests {
     use rust_compiler::parser::ast::{
-        Declaration, Expression, Literal, Operator, Program, Statement, Type,
+        DeclarationKind, ExpressionKind, LiteralKind, Operator, Program, StatementKind, Type,
     };
-    use rust_compiler::parser::parse_source;
+    use rust_compiler::lexer::lexer_core::tokenize;
+    use rust_compiler::parser::parser_core::parse;
 
     /// Helper function to parse a source string and return the AST
     fn parse_test(source: &str) -> Program {
-        match parse_source(source) {
+        // Tokenize the source code
+        let (tokens, _) = tokenize(source);
+        match parse(tokens, source) {
             Ok(program) => program,
             Err(e) => panic!("Parse error: {}", e),
         }
@@ -37,8 +40,8 @@ mod parser_tests {
 
         assert_eq!(program.declarations.len(), 2);
 
-        match &program.declarations[0] {
-            Declaration::Variable(names, typ) => {
+        match &program.declarations[0].node {
+            DeclarationKind::Variable(names, typ) => {
                 assert_eq!(names.len(), 1);
                 assert_eq!(names[0], "x");
                 assert!(matches!(typ, Type::Int));
@@ -46,8 +49,8 @@ mod parser_tests {
             _ => panic!("Expected variable declaration"),
         }
 
-        match &program.declarations[1] {
-            Declaration::Variable(names, typ) => {
+        match &program.declarations[1].node {
+            DeclarationKind::Variable(names, typ) => {
                 assert_eq!(names.len(), 2);
                 assert_eq!(names[0], "y");
                 assert_eq!(names[1], "z");
@@ -71,8 +74,8 @@ mod parser_tests {
 
         assert_eq!(program.declarations.len(), 2);
 
-        match &program.declarations[0] {
-            Declaration::Array(names, typ, size) => {
+        match &program.declarations[0].node {
+            DeclarationKind::Array(names, typ, size) => {
                 assert_eq!(names.len(), 1);
                 assert_eq!(names[0], "arr");
                 assert!(matches!(typ, Type::Int));
@@ -81,8 +84,8 @@ mod parser_tests {
             _ => panic!("Expected array declaration"),
         }
 
-        match &program.declarations[1] {
-            Declaration::Array(names, typ, size) => {
+        match &program.declarations[1].node {
+            DeclarationKind::Array(names, typ, size) => {
                 assert_eq!(names.len(), 2);
                 assert_eq!(names[0], "matrix1");
                 assert_eq!(names[1], "matrix2");
@@ -109,24 +112,28 @@ mod parser_tests {
         assert_eq!(program.declarations.len(), 2);
 
         // Test single variable initialization
-        match &program.declarations[0] {
-            Declaration::VariableWithInit(names, typ, value) => {
+        match &program.declarations[0].node {
+            DeclarationKind::VariableWithInit(names, typ, value) => {
                 assert_eq!(names.len(), 1);
                 assert_eq!(names[0], "x");
                 assert!(matches!(typ, Type::Int));
-                assert!(matches!(value, Expression::Literal(Literal::Int(10))));
+                assert!(
+                    matches!(&value.node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(10)))
+                );
             }
             _ => panic!("Expected variable declaration with initialization"),
         }
 
         // Test multiple variables initialization
-        match &program.declarations[1] {
-            Declaration::VariableWithInit(names, typ, value) => {
+        match &program.declarations[1].node {
+            DeclarationKind::VariableWithInit(names, typ, value) => {
                 assert_eq!(names.len(), 2);
                 assert_eq!(names[0], "y");
                 assert_eq!(names[1], "z");
                 assert!(matches!(typ, Type::Float));
-                assert!(matches!(value, Expression::Literal(Literal::Float(v)) if *v == 3.14));
+                assert!(
+                    matches!(&value.node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Float(v) if (*v - 3.14).abs() < 0.0001))
+                );
             }
             _ => panic!("Expected variable declaration with initialization"),
         }
@@ -147,24 +154,30 @@ mod parser_tests {
         assert_eq!(program.declarations.len(), 2);
 
         // Test array initialization
-        match &program.declarations[0] {
-            Declaration::ArrayWithInit(names, typ, size, values) => {
+        match &program.declarations[0].node {
+            DeclarationKind::ArrayWithInit(names, typ, size, values) => {
                 assert_eq!(names.len(), 1);
                 assert_eq!(names[0], "arr");
                 assert!(matches!(typ, Type::Int));
                 assert_eq!(*size, 3);
                 assert_eq!(values.len(), 3);
 
-                assert!(matches!(&values[0], Expression::Literal(Literal::Int(1))));
-                assert!(matches!(&values[1], Expression::Literal(Literal::Int(2))));
-                assert!(matches!(&values[2], Expression::Literal(Literal::Int(3))));
+                assert!(
+                    matches!(&values[0].node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(1)))
+                );
+                assert!(
+                    matches!(&values[1].node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(2)))
+                );
+                assert!(
+                    matches!(&values[2].node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(3)))
+                );
             }
             _ => panic!("Expected array declaration with initialization"),
         }
 
         // Test multiple arrays initialization
-        match &program.declarations[1] {
-            Declaration::ArrayWithInit(names, typ, size, values) => {
+        match &program.declarations[1].node {
+            DeclarationKind::ArrayWithInit(names, typ, size, values) => {
                 assert_eq!(names.len(), 2);
                 assert_eq!(names[0], "matrix1");
                 assert_eq!(names[1], "matrix2");
@@ -172,8 +185,12 @@ mod parser_tests {
                 assert_eq!(*size, 2);
                 assert_eq!(values.len(), 2);
 
-                assert!(matches!(&values[0], Expression::Literal(Literal::Float(v)) if *v == 1.1));
-                assert!(matches!(&values[1], Expression::Literal(Literal::Float(v)) if *v == 2.2));
+                assert!(
+                    matches!(&values[0].node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Float(v) if (*v - 1.1).abs() < 0.0001))
+                );
+                assert!(
+                    matches!(&values[1].node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Float(v) if (*v - 2.2).abs() < 0.0001))
+                );
             }
             _ => panic!("Expected array declaration with initialization"),
         }
@@ -194,20 +211,30 @@ mod parser_tests {
 
         assert_eq!(program.declarations.len(), 2);
 
+<<<<<<< HEAD
         match &program.declarations[0] {
             Declaration::Constant(name, typ, value) => {
+=======
+        match &program.declarations[0].node {
+            DeclarationKind::Constant(name, typ, value) => {
+>>>>>>> Adel
                 assert_eq!(name, "Pi");
                 assert!(matches!(typ, Type::Float));
-                assert!(matches!(value, Literal::Float(v) if *v == 3.14));
+                assert!(matches!(&value.node, LiteralKind::Float(v) if *v == 3.14));
             }
             _ => panic!("Expected constant declaration"),
         }
 
+<<<<<<< HEAD
         match &program.declarations[1] {
             Declaration::Constant(name, typ, value) => {
+=======
+        match &program.declarations[1].node {
+            DeclarationKind::Constant(name, typ, value) => {
+>>>>>>> Adel
                 assert_eq!(name, "Max");
                 assert!(matches!(typ, Type::Int));
-                assert!(matches!(value, Literal::Int(v) if *v == 100));
+                assert!(matches!(&value.node, LiteralKind::Int(v) if *v == 100));
             }
             _ => panic!("Expected constant declaration"),
         }
@@ -233,7 +260,7 @@ mod parser_tests {
 
         // Check that they're all assignment statements
         for stmt in &program.statements {
-            assert!(matches!(stmt, Statement::Assignment(_, _)));
+            assert!(matches!(&stmt.node, StatementKind::Assignment(_, _)));
         }
     }
 
@@ -254,20 +281,25 @@ mod parser_tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        match &program.statements[0] {
-            Statement::IfThen(condition, then_block) => {
+        match &program.statements[0].node {
+            StatementKind::IfThen(condition, then_block) => {
                 // Check condition is x > 10
-                if let Expression::BinaryOp(left, op, right) = condition {
-                    assert!(matches!(**left, Expression::Identifier(ref id) if id == "x"));
+                if let ExpressionKind::BinaryOp(left, op, right) = &condition.node {
+                    assert!(matches!(&left.node, ExpressionKind::Identifier(id) if id == "x"));
                     assert!(matches!(op, Operator::GreaterThan));
-                    assert!(matches!(**right, Expression::Literal(Literal::Int(10))));
+                    assert!(
+                        matches!(&right.node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(10)))
+                    );
                 } else {
                     panic!("Expected binary operation as condition");
                 }
 
                 // Check then block has one assignment
                 assert_eq!(then_block.len(), 1);
-                assert!(matches!(&then_block[0], Statement::Assignment(_, _)));
+                assert!(matches!(
+                    &then_block[0].node,
+                    StatementKind::Assignment(_, _)
+                ));
             }
             _ => panic!("Expected if statement"),
         }
@@ -292,24 +324,32 @@ mod parser_tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        match &program.statements[0] {
-            Statement::IfThenElse(condition, then_block, else_block) => {
+        match &program.statements[0].node {
+            StatementKind::IfThenElse(condition, then_block, else_block) => {
                 // Check condition is x > 10
-                if let Expression::BinaryOp(left, op, right) = condition {
-                    assert!(matches!(**left, Expression::Identifier(ref id) if id == "x"));
+                if let ExpressionKind::BinaryOp(left, op, right) = &condition.node {
+                    assert!(matches!(&left.node, ExpressionKind::Identifier(id) if id == "x"));
                     assert!(matches!(op, Operator::GreaterThan));
-                    assert!(matches!(**right, Expression::Literal(Literal::Int(10))));
+                    assert!(
+                        matches!(&right.node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(10)))
+                    );
                 } else {
                     panic!("Expected binary operation as condition");
                 }
 
                 // Check then block has one assignment
                 assert_eq!(then_block.len(), 1);
-                assert!(matches!(&then_block[0], Statement::Assignment(_, _)));
+                assert!(matches!(
+                    &then_block[0].node,
+                    StatementKind::Assignment(_, _)
+                ));
 
                 // Check else block has one assignment
                 assert_eq!(else_block.len(), 1);
-                assert!(matches!(&else_block[0], Statement::Assignment(_, _)));
+                assert!(matches!(
+                    &else_block[0].node,
+                    StatementKind::Assignment(_, _)
+                ));
             }
             _ => panic!("Expected if-else statement"),
         }
@@ -332,17 +372,19 @@ mod parser_tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        match &program.statements[0] {
-            Statement::DoWhile(body, condition) => {
+        match &program.statements[0].node {
+            StatementKind::DoWhile(body, condition) => {
                 // Check body has one assignment
                 assert_eq!(body.len(), 1);
-                assert!(matches!(&body[0], Statement::Assignment(_, _)));
+                assert!(matches!(&body[0].node, StatementKind::Assignment(_, _)));
 
                 // Check condition is i < 10
-                if let Expression::BinaryOp(left, op, right) = condition {
-                    assert!(matches!(**left, Expression::Identifier(ref id) if id == "i"));
+                if let ExpressionKind::BinaryOp(left, op, right) = &condition.node {
+                    assert!(matches!(&left.node, ExpressionKind::Identifier(id) if id == "i"));
                     assert!(matches!(op, Operator::LessThan));
-                    assert!(matches!(**right, Expression::Literal(Literal::Int(10))));
+                    assert!(
+                        matches!(&right.node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::Int(10)))
+                    );
                 } else {
                     panic!("Expected binary operation as condition");
                 }
@@ -368,23 +410,26 @@ mod parser_tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        match &program.statements[0] {
-            Statement::For(var, from, to, step, body) => {
-                // Check loop variable
-                assert_eq!(var, "i");
+        match &program.statements[0].node {
+            StatementKind::For(var, from, to, step, body) => {
+                // Check loop variable: extract identifier from Located<ExpressionKind>
+                if let ExpressionKind::Identifier(ident) = &var.node {
+                    assert_eq!(ident, "i");
+                } else {
+                    panic!("Expected identifier for loop variable");
+                }
+                assert!(matches!(&from.node, ExpressionKind::Literal(lit) if
+                    matches!(&lit.node, LiteralKind::Int(1))
+                ));
+                assert!(matches!(&to.node, ExpressionKind::Literal(lit) if
+                    matches!(&lit.node, LiteralKind::Int(100))
+                ));
+                assert!(matches!(&step.node, ExpressionKind::Literal(lit) if
+                    matches!(&lit.node, LiteralKind::Int(1))
+                ));
 
-                // Check from is 1
-                assert!(matches!(from, Expression::Literal(Literal::Int(1))));
-
-                // Check to is 100
-                assert!(matches!(to, Expression::Literal(Literal::Int(100))));
-
-                // Check step is 1
-                assert!(matches!(step, Expression::Literal(Literal::Int(1))));
-
-                // Check body has one assignment
                 assert_eq!(body.len(), 1);
-                assert!(matches!(&body[0], Statement::Assignment(_, _)));
+                assert!(matches!(&body[0].node, StatementKind::Assignment(_, _)));
             }
             _ => panic!("Expected for statement"),
         }
@@ -406,20 +451,20 @@ mod parser_tests {
 
         assert_eq!(program.statements.len(), 2);
 
-        match &program.statements[0] {
-            Statement::Input(var) => {
-                assert!(matches!(var, Expression::Identifier(id) if id == "name"));
+        match &program.statements[0].node {
+            StatementKind::Input(var) => {
+                assert!(matches!(&var.node, ExpressionKind::Identifier(id) if id == "name"));
             }
             _ => panic!("Expected input statement"),
         }
 
-        match &program.statements[1] {
-            Statement::Output(exprs) => {
+        match &program.statements[1].node {
+            StatementKind::Output(exprs) => {
                 assert_eq!(exprs.len(), 2);
                 assert!(
-                    matches!(&exprs[0], Expression::Literal(Literal::String(s)) if s == "Value is: ")
+                    matches!(&exprs[0].node, ExpressionKind::Literal(lit) if matches!(&lit.node, LiteralKind::String(s) if s == "Value is: "))
                 );
-                assert!(matches!(&exprs[1], Expression::Identifier(id) if id == "name"));
+                assert!(matches!(&exprs[1].node, ExpressionKind::Identifier(id) if id == "name"));
             }
             _ => panic!("Expected output statement"),
         }
@@ -445,7 +490,7 @@ mod parser_tests {
 
         // All should be assignment statements
         for stmt in &program.statements {
-            assert!(matches!(stmt, Statement::Assignment(_, _)));
+            assert!(matches!(&stmt.node, StatementKind::Assignment(_, _)));
         }
     }
 
@@ -504,5 +549,158 @@ mod parser_tests {
         // Just check if parsing succeeds
         let program = parse_test(&input);
         assert_eq!(program.name, "L3_software");
+    }
+
+    #[test]
+    fn test_empty_program() {
+        let source = "";
+        let result = parse(tokenize(source).0, source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unexpected_token() {
+        let source = "MainPrgm test ; Var let x : Int ; BeginPg { x := ; } EndPg ;";
+        let result = parse(tokenize(source).0, source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_minimal_program_structure_valid() {
+        let source = "
+            MainPrgm L3_software ;
+            Var
+            BeginPg
+            {
+            }
+            EndPg ;
+        ";
+        let program = parse_test(source);
+        assert_eq!(program.name, "L3_software");
+    }
+
+    #[test]
+    fn test_variable_declaration_simple_valid() {
+        let source = "MainPrgm t; Var let x : Int ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Variable(names, typ) if names.contains(&"x".to_string()) && matches!(typ, Type::Int))));
+    }
+
+    #[test]
+    fn test_variable_declaration_array_valid() {
+        let source = "MainPrgm t; Var let tableau : [Float ; 5] ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Array(names, typ, size) if names.contains(&"tableau".to_string()) && matches!(typ, Type::Float) && *size == 5)));
+    }
+
+    #[test]
+    fn test_variable_declaration_multiple_valid() {
+        let source =
+            "MainPrgm t; Var let a, b, c : Int ; let tab1, tab2 : [Int ; 10] ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Variable(names, typ) if names.contains(&"a".to_string()) && matches!(typ, Type::Int))));
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Array(names, typ, size) if names.contains(&"tab1".to_string()) && matches!(typ, Type::Int) && *size == 10)));
+    }
+
+    #[test]
+    fn test_variable_declaration_missing_colon_invalid() {
+        let source = "MainPrgm t; Var let erreur Int ; BeginPg { } EndPg ;";
+        let result = parse(tokenize(source).0, source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_array_declaration_invalid_sizes() {
+        let source = "MainPrgm t; Var let tab_erreur : [Int ; -1] ; let tab_erreur2 : [Float ; 0] ; let tab_erreur3 : [Int ; 2.5] ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        // Semantic error, not parser error, so just check parsing succeeds
+        assert_eq!(program.declarations.len(), 3);
+    }
+
+    #[test]
+    fn test_identifier_invalid_lexical() {
+        let sources = [
+            "MainPrgm t; Var let 1abc : Int ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let var- : Float ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let var_ : Int ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let var__valide : Float ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let un_nom_de_variable_trop_long_depassant_14_caracteres : Int ; BeginPg { } EndPg ;",
+        ];
+        for src in sources {
+            let result = parse(tokenize(src).0, src);
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    fn test_constant_declaration_valid() {
+        let source = "MainPrgm t; Var @define Const PI : Float = 3.14 ; @define Const MAX_SIZE : Int = 100 ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Constant(name, typ, _) if name == "PI" && matches!(typ, Type::Float))));
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Constant(name, typ, _) if name == "MAX_SIZE" && matches!(typ, Type::Int))));
+    }
+
+    #[test]
+    fn test_constant_declaration_missing_equal_invalid() {
+        let source = "MainPrgm t; Var @define Const EULER : Float 2.718 ; BeginPg { } EndPg ;";
+        let result = parse(tokenize(source).0, source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_constant_declaration_non_constant_value_invalid() {
+        let source = "MainPrgm t; Var let variable : Int ; @define Const ERREUR : Int = variable ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        // Semantic error, not parser error, so just check parsing succeeds
+        assert!(program.declarations.len() >= 2);
+    }
+
+    #[test]
+    fn test_type_usage_valid() {
+        let source = "MainPrgm t; Var let entier : Int ; let reel : Float ; @define Const ZERO_INT : Int = 0 ; @define Const ZERO_FLOAT : Float = 0.0 ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() >= 4);
+    }
+
+    #[test]
+    fn test_type_unknown_invalid() {
+        let source = "MainPrgm t; Var let inconnu : String ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        // Semantic error, not parser error, so just check parsing succeeds
+        assert!(program.declarations.len() == 1);
+    }
+
+    #[test]
+    fn test_int_constants_valid() {
+        let source = "MainPrgm t; Var let pos : Int = 123 ; let neg : Int = (-456) ; let zero : Int = 0 ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() == 3);
+    }
+
+    #[test]
+    fn test_int_constants_out_of_bounds_invalid() {
+        let source = "MainPrgm t; Var let trop_grand : Int = 32768 ; let trop_petit : Int = (-32769) ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() == 2);
+    }
+
+    #[test]
+    fn test_float_constants_valid() {
+        let source = "MainPrgm t; Var let pi_valide : Float = 3.14159 ; let neg_reel : Float = (-2.718) ; let pos_reel : Float = (+1.618) ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() == 3);
+    }
+
+    #[test]
+    fn test_float_constants_invalid_format() {
+        let sources = [
+            "MainPrgm t; Var let reel_erreur : Float = 3. ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let reel_erreur2 : Float = .14 ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let reel_erreur3 : Float = 314. ; BeginPg { } EndPg ;",
+        ];
+        for src in sources {
+            let result = parse(tokenize(src).0, src);
+            assert!(result.is_err());
+        }
     }
 }

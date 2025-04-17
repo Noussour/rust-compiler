@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod error;
+<<<<<<< HEAD
 
 #[allow(unused_imports)]
 mod grammar_parser {
@@ -102,3 +103,6 @@ pub fn parse_source(source: &str) -> Result<Program, ParseError> {
     let tokens: Vec<TokenWithPosition> = lexer.collect();
     parse(tokens)
 }
+=======
+pub mod parser_core;
+>>>>>>> Adel

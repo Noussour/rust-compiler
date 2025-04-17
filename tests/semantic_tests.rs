@@ -1,34 +1,37 @@
 #[cfg(test)]
 mod semantic_tests {
-    use rust_compiler::parser::parse_source;
-    use rust_compiler::semantics::analyzer::SemanticAnalyzer;
-    use rust_compiler::semantics::error::SemanticError;
-    use std::collections::HashMap;
+    use rust_compiler::lexer::lexer_core::tokenize;
+    use rust_compiler::parser::parser_core::parse;
+    use rust_compiler::semantics::analyzer_core::SemanticAnalyzer;
 
-    /// Helper function to analyze code semantically and return errors
-    fn analyze_test(source: &str) -> Vec<SemanticError> {
+    /// Helper function to analyze code semantically and return error messages as strings
+    fn analyze_test(source: &str) -> Vec<String> {
         // First parse the code to get an AST
-        let program = match parse_source(source) {
+        let tokens = tokenize(source);
+        let program = match parse(tokens.0, source) {
             Ok(program) => program,
             Err(e) => panic!("Parse error: {}", e),
         };
 
-        // Create a semantic analyzer with empty position info
-        let mut analyzer = SemanticAnalyzer::new_with_positions(HashMap::new());
+        // Create a semantic analyzer with empty source code info
+        let mut analyzer = SemanticAnalyzer::new(String::new());
 
         // Analyze the program
         analyzer.analyze(&program);
 
-        // Return the errors detected
-        analyzer.get_errors().to_vec()
+        // Instead of cloning SemanticError (which is not Clone), collect their Debug strings.
+        analyzer
+            .get_errors()
+            .iter()
+            .map(|e| format!("{:?}", e))
+            .collect()
     }
 
-    /// Helper to check if errors match expected patterns
-    fn contains_error_of_type(errors: &[SemanticError], error_type: &str) -> bool {
-        errors.iter().any(|e| {
-            let error_str = format!("{:?}", e);
-            error_str.contains(error_type)
-        })
+    /// Helper to check if errors match expected patterns (now operating on error messages)
+    fn contains_error_of_type(errors: &[String], error_type: &str) -> bool {
+        errors
+            .iter()
+            .any(|error_str| error_str.contains(error_type))
     }
 
     #[test]
@@ -441,5 +444,210 @@ mod semantic_tests {
         let errors = analyze_test(source);
         assert!(!errors.is_empty(), "Expected errors, but found none");
         // This should cause a type error for the condition
+    }
+
+    #[test]
+    fn test_empty_source() {
+        let errors = analyze_test("");
+        assert!(!errors.is_empty());
+    }
+
+    #[test]
+    fn test_only_comments() {
+        let errors = analyze_test("{-- comment --} <!- another -!>");
+        assert!(!errors.is_empty());
+    }
+
+    #[test]
+    fn test_assign_to_undeclared_array_element() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let x: Int;
+            BeginPg
+            {
+                arr[0] := 1; <!- arr not declared -!>
+            }
+            EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
+    }
+
+    #[test]
+    fn test_array_size_negative_zero_float_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let tab_neg : [Int; -1];
+            let tab_zero : [Float; 0];
+            let tab_float : [Int; 2.5];
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ArraySizeInvalid"));
+    }
+
+    #[test]
+    fn test_identifier_invalid_semantics() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let var_ : Int;
+            let var__valide : Float;
+            let un_nom_de_variable_trop_long_depassant_14_caracteres : Int;
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "InvalidIdentifier"));
+    }
+
+    #[test]
+    fn test_constant_non_constant_value_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let variable : Int;
+            @define Const ERREUR : Int = variable;
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ConstantValueNotConstant"));
+    }
+
+    #[test]
+    fn test_type_unknown_semantic_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let inconnu : String;
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "UnknownType"));
+    }
+
+    #[test]
+    fn test_int_constant_out_of_bounds_semantic() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let trop_grand : Int = 32768;
+            let trop_petit : Int = (-32769);
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "IntLiteralOutOfBounds"));
+    }
+
+    #[test]
+    fn test_assignment_to_constant_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            @define Const VALEUR : Int = 50;
+            BeginPg { VALEUR := 100; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ConstantModification"));
+    }
+
+    #[test]
+    fn test_assignment_to_undeclared_identifier_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            BeginPg { y := 5; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
+    }
+
+    #[test]
+    fn test_assignment_type_mismatch_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let entier : Int;
+            BeginPg { entier := 3.14; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "TypeMismatch"));
+    }
+
+    #[test]
+    fn test_assignment_array_index_out_of_bounds_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let data : [Int; 3];
+            BeginPg { data[3] := 7; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ArrayIndexOutOfBounds"));
+    }
+
+    #[test]
+    fn test_for_loop_undeclared_variable_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            BeginPg { for m from 1 to 5 step 1 { } } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
+    }
+
+    #[test]
+    fn test_input_argument_not_identifier_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            BeginPg { input(123); } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(
+            &errors,
+            "InputArgumentNotIdentifier"
+        ));
+    }
+
+    #[test]
+    fn test_division_by_zero_semantic_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let err : Float;
+            BeginPg { err := 10 / 0; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "DivisionByZero"));
+    }
+
+    #[test]
+    fn test_operation_type_mismatch_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let nbr : Int;
+            let flottant : Float;
+            let resultat : Int;
+            BeginPg { resultat := nbr AND flottant; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "TypeMismatch"));
     }
 }

@@ -1,6 +1,20 @@
-// AST for MiniSoft language
+use std::ops::Range;
 
 /// Program is the root of the AST
+
+/// Wrapper for any AST node that includes position information
+#[derive(Debug, Clone, PartialEq)]
+pub struct Located<T> {
+    pub node: T,
+    pub span: Range<usize>,
+}
+
+impl<T> Located<T> {
+    pub fn into_inner(self) -> T {
+        self.node
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub name: String,
@@ -9,7 +23,7 @@ pub struct Program {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Declaration {
+pub enum DeclarationKind {
     Variable(Vec<String>, Type),
     Array(Vec<String>, Type, usize),
     VariableWithInit(Vec<String>, Type, Expression),
@@ -17,11 +31,39 @@ pub enum Declaration {
     Constant(String, Type, Literal),
 }
 
+pub type Declaration = Located<DeclarationKind>;
+
 /// Data types in MiniSoft
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Int,
     Float,
+    String,
+}
+
+impl Default for Type {
+    fn default() -> Self {
+        Type::Int
+    }
+}
+
+impl Type {
+    /// Determines if `self` can be implicitly converted to `target`.
+    /// Returns true if the types are compatible for assignment or operation.
+    pub fn is_compatible_with(&self, target: &Type) -> bool {
+        match (self, target) {
+            // Same types are always compatible
+            (Type::Int, Type::Int) => true,
+            (Type::Float, Type::Float) => true,
+            (Type::String, Type::String) => true,
+            
+            // Int can be converted to Float
+            // (Type::Int, Type::Float) => true,
+            
+            // All other combinations are incompatible
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Type {
@@ -29,24 +71,28 @@ impl std::fmt::Display for Type {
         match self {
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
+            Type::String => write!(f, "String"),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
+pub enum StatementKind {
     Assignment(Expression, Expression),
     IfThen(Expression, Vec<Statement>),
     IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
     DoWhile(Vec<Statement>, Expression),
-    For(String, Expression, Expression, Expression, Vec<Statement>),
+    For(Expression, Expression, Expression, Expression, Vec<Statement>),
     Input(Expression),
     Output(Vec<Expression>),
+    Scope(Vec<Statement>),
     Empty,
 }
 
+pub type Statement = Located<StatementKind>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expression {
+pub enum ExpressionKind {
     Identifier(String),
     ArrayAccess(String, Box<Expression>),
     Literal(Literal),
@@ -54,12 +100,26 @@ pub enum Expression {
     UnaryOp(UnaryOperator, Box<Expression>),
 }
 
+pub type Expression = Located<ExpressionKind>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Literal {
+pub enum LiteralKind {
     Int(i32),
     Float(f32),
     String(String),
 }
+
+impl LiteralKind {
+    pub fn literal_kind_to_type(&self) -> Type {
+        match self {
+            LiteralKind::Int(_) => Type::Int,
+            LiteralKind::Float(_) => Type::Float,
+            LiteralKind::String(_) => Type::String,
+        }
+    }
+}
+
+pub type Literal = Located<LiteralKind>;
 
 /// Binary operators
 #[derive(Debug, Clone, PartialEq)]
@@ -88,14 +148,13 @@ pub enum UnaryOperator {
     Not,
 }
 
-impl Literal {
+impl LiteralKind {
     /// Get the type of this literal
-    #[allow(dead_code)]
     pub fn get_type(&self) -> Type {
         match self {
-            Literal::Int(_) => Type::Int,
-            Literal::Float(_) => Type::Float,
-            Literal::String(_) => panic!("String literals don't have a MiniSoft type"),
+            LiteralKind::Int(_) => Type::Int,
+            LiteralKind::Float(_) => Type::Float,
+            LiteralKind::String(_) => panic!("String literals don't have a MiniSoft type"),
         }
     }
 }

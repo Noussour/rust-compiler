@@ -96,6 +96,25 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_invalid_identifiers_and_floats() {
+        // Identifiers
+        let mut lexer = Token::lexer(
+            "1abc var- var_ var__valide un_nom_de_variable_trop_long_depassant_14_caracteres",
+        );
+        assert_eq!(lexer.next(), Some(Err(()))); // 1abc
+        assert_eq!(lexer.next(), Some(Err(()))); // var-
+        assert_eq!(lexer.next(), Some(Err(()))); // var_
+        assert_eq!(lexer.next(), Some(Err(()))); // var__valide
+        assert_eq!(lexer.next(), Some(Err(()))); // too long
+
+        // Floats with invalid format
+        let mut lexer = Token::lexer("3. .14 314.");
+        assert_eq!(lexer.next(), Some(Err(()))); // 3.
+        assert_eq!(lexer.next(), Some(Err(()))); // .14
+        assert_eq!(lexer.next(), Some(Err(()))); // 314.
+    }
+
+    #[test]
     fn test_complete_program() {
         use std::fs;
 
@@ -106,5 +125,29 @@ mod lexer_tests {
         let tokens: Vec<_> = lexer.collect();
 
         assert!(tokens.iter().all(|t| t.is_ok()));
+    }
+
+    #[test]
+    fn test_empty_input() {
+        let mut lexer = Token::lexer("");
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
+    fn test_only_comments() {
+        let mut lexer = Token::lexer("{-- comment --} <!- another -!>");
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
+    fn test_mixed_valid_and_invalid() {
+        let mut lexer = Token::lexer("valid1 invalid__id 12345");
+        assert_eq!(
+            lexer.next(),
+            Some(Ok(Token::Identifier("valid1".to_string())))
+        );
+        assert_eq!(lexer.next(), Some(Err(()))); // invalid__id
+        assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(12345))));
+        assert_eq!(lexer.next(), None);
     }
 }

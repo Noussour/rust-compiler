@@ -1,29 +1,28 @@
-use crate::error_reporter::ErrorReporter;
-use crate::lexer::{lexer_core::TokenWithPosition, token::Token, Lexer};
-use crate::parser::ast::{Declaration, Expression, Program, Statement};
-use crate::parser::parse;
-use crate::semantics::{SemanticAnalyzer, SymbolKind};
+use crate::codegen::generator::CodeGenerator;
+use crate::codegen::quadruple::QuadrupleProgram;
+use crate::error_reporter::ErrorReportFormatter;
+use crate::lexer::lexer_core::{tokenize, TokenWithMetaData};
+use crate::parser::ast::{LiteralKind, Program};
+use crate::parser::parser_core::parse;
+use crate::semantics::symbol_table::SymbolValue;
+use crate::semantics::{symbol_table::SymbolKind, SemanticAnalyzer};
 use colored::*;
-use std::collections::HashMap;
 use std::fs;
 
 pub struct Compiler {
     source_code: String,
     file_path: String,
-    error_reporter: ErrorReporter,
+    quadruples: Option<QuadrupleProgram>,
 }
 
 impl Compiler {
     pub fn new(file_path: &str) -> Result<Self, String> {
         match fs::read_to_string(file_path) {
-            Ok(content) => {
-                let error_reporter = ErrorReporter::new(&content, file_path);
-                Ok(Self {
-                    source_code: content,
-                    file_path: file_path.to_string(),
-                    error_reporter,
-                })
-            }
+            Ok(content) => Ok(Self {
+                source_code: content,
+                file_path: file_path.to_string(),
+                quadruples: None,
+            }),
             Err(e) => Err(format!("Error reading file '{}': {}", file_path, e)),
         }
     }
@@ -32,101 +31,108 @@ impl Compiler {
         println!("Compiling file: {}", self.file_path);
         self.print_source_code();
 
-        // STEP 1: Lexical Analysis
+        // Step 1: Lexical Analysis
+        let tokens = self.perform_lexical_analysis()?;
+
+        // Step 2: Syntax Analysis
+        let ast = self.perform_syntax_analysis(tokens)?;
+
+        // Step 3: Semantic Analysis
+        self.perform_semantic_analysis(&ast)?;
+
+        // Step 4: Code Generation
+        self.perform_code_generation(&ast)?;
+
+        Ok(())
+    }
+
+    fn perform_lexical_analysis(&mut self) -> Result<Vec<TokenWithMetaData>, i32> {
+        println!("{}: ", "Lexical Analysis".bold().underline());
         // Tokenize the source code and capture lexical errors
-        let tokens = self.tokenize();
+        let (valid_tokens, errors) = tokenize(&self.source_code);
 
         // Check for lexical errors
-        let mut has_lexical_errors = false;
-        for token in &tokens {
-            if let Token::Error = &token.token {
-                self.error_reporter.add_lexical_error(
-                    &token.text,
-                    token.position.line,
-                    token.position.column,
-                );
-                has_lexical_errors = true;
-            }
-        }
-
-        // If lexical errors, report and exit early
-        if has_lexical_errors {
-            println!("{}", "Lexical errors detected".red().bold());
-            self.error_reporter.report_errors();
+        if !errors.is_empty() {
+            println!("{}", "Lexical Errors Detected:".red().bold());
+            ErrorReportFormatter::print_errors(&errors, Some(&self.source_code));
             return Err(1);
         }
 
-        self.print_tokens(&tokens);
+        self.print_tokens(&valid_tokens);
+        println!(
+            "{}",
+            "Lexical analysis completed successfully.".green().bold()
+        );
+        Ok(valid_tokens)
+    }
 
-        // STEP 2: Syntax Analysis
-        println!("\n{}", "Parsing:".bold().underline());
+    fn perform_syntax_analysis(
+        &mut self,
+        tokens: Vec<TokenWithMetaData>,
+    ) -> Result<crate::parser::ast::Program, i32> {
+        println!("\n{} :", "Syntax Analysis".bold().underline());
+        println!("{} :", "Parsing".bold().underline());
 
         // Parse tokens into an AST
-        match parse(tokens) {
+        match parse(tokens, &self.source_code) {
             Ok(program) => {
-                println!("{}", "AST:".green());
-                println!("{:#?}", program);
-
-                // STEP 3: Semantic Analysis
-                println!("\n{}", "Semantic Analysis:".bold().underline());
-
-                // Build position map for better error reporting
-                let position_map = self.build_position_map(&program);
-
-                let mut analyzer = SemanticAnalyzer::new_with_positions(position_map);
-                analyzer.analyze(&program);
-
-                // Check for semantic errors
-                let semantic_errors = analyzer.get_errors();
-                if !semantic_errors.is_empty() {
-                    println!("{}", "Semantic Errors Detected".red().bold());
-                    for error in semantic_errors {
-                        self.error_reporter.add_semantic_error(error);
-                    }
-                } else {
-                    println!("{}", "No semantic errors found".green());
-
-                    // Display symbol table
-                    println!("\n{}", "Symbol Table:".bold().underline());
-                    let symbol_table = analyzer.get_symbol_table();
-                    for symbol in symbol_table.get_all() {
-                        let kind = match &symbol.kind {
-                            SymbolKind::Variable => "Variable".cyan(),
-                            SymbolKind::Constant => "Constant".yellow(),
-                            SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
-                        };
-
-                        let value = if let Some(val) = &symbol.value {
-                            format!("{:?}", val).green()
-                        } else {
-                            "<uninitialized>".dimmed()
-                        };
-
-                        println!(
-                            "{} {} {} = {} (line {}, col {})",
-                            kind,
-                            symbol.name.white(),
-                            format!("({})", symbol.symbol_type).blue(),
-                            value,
-                            symbol.line,
-                            symbol.column
-                        );
-                    }
-                }
+                self.print_ast(&program);
+                println!("{}", "Parsing completed successfully.".green().bold());
+                Ok(program)
             }
             Err(parse_error) => {
-                println!("{}", "Parser Error:".red().bold());
-                self.error_reporter.add_parse_error(&parse_error);
+                println!("{}", "Parser Error Detected:".red().bold());
+                ErrorReportFormatter::print_errors(&[parse_error], Some(&self.source_code));
+                return Err(1);
             }
         }
+    }
 
-        // Final error reporting
-        if self.error_reporter.has_errors() {
-            self.error_reporter.report_errors();
-            Err(1) // Return error code
+    fn perform_semantic_analysis(
+        &mut self,
+        program: &crate::parser::ast::Program,
+    ) -> Result<(), i32> {
+        println!("\n{}", "Semantic Analysis:".bold().underline());
+
+        // Create analyzer with source code for span-to-line/column conversion
+        let mut analyzer = SemanticAnalyzer::new(self.source_code.clone());
+        analyzer.analyze(program);
+
+        // Check for semantic errors
+        let semantic_errors = analyzer.get_errors();
+        if !semantic_errors.is_empty() {
+            println!("{}", "Semantic Errors Detected:".red().bold());
+            ErrorReportFormatter::print_errors(&semantic_errors, Some(&self.source_code));
+            Err(1)
         } else {
-            println!("{}", "Compilation successful!".green().bold());
-            Ok(()) // Successful compilation
+            println!("{}", "analysis completed successfully.".green());
+            self.print_symbol_table(&analyzer);
+            Ok(())
+        }
+    }
+
+    fn perform_code_generation(&mut self, program: &Program) -> Result<(), i32> {
+        println!("\n{}", "Code Generation:".bold().underline());
+
+        let mut code_generator = CodeGenerator::new();
+        let quadruple_program = code_generator.generate_code(program);
+
+        // Store the generated quadruples
+        self.quadruples = Some(quadruple_program.clone());
+
+        // Print the generated quadruples
+        self.print_quadruples();
+
+        println!("{}", "Code generation completed successfully.".green());
+        Ok(())
+    }
+
+    fn print_quadruples(&self) {
+        if let Some(quadruples) = &self.quadruples {
+            println!("{}", "Generated Quadruples:".bold().underline());
+            for (i, quad) in quadruples.quadruples.iter().enumerate() {
+                println!("{}: {}", i, quad);
+            }
         }
     }
 
@@ -135,20 +141,14 @@ impl Compiler {
         println!("{}\n", self.source_code);
     }
 
-    fn tokenize(&self) -> Vec<TokenWithPosition> {
-        let lexer = Lexer::new(&self.source_code);
-        let tokens: Vec<_> = lexer.collect();
-        tokens
-    }
-
-    fn print_tokens(&self, tokens: &[TokenWithPosition]) {
+    fn print_tokens(&self, tokens: &[TokenWithMetaData]) {
         println!("{}", "Tokens:".bold().underline());
         for token_with_pos in tokens {
-            let token_name = format!("{:?}", token_with_pos.token).green();
-            let token_value = token_with_pos.text.yellow();
+            let token_name = format!("{:?}", token_with_pos.kind).green();
+            let token_value = token_with_pos.value.yellow();
             let position = format!(
                 "Line {}, Col {}",
-                token_with_pos.position.line, token_with_pos.position.column
+                token_with_pos.line, token_with_pos.column
             )
             .blue();
             let span = format!("{:?}", token_with_pos.span).magenta();
@@ -160,161 +160,54 @@ impl Compiler {
         }
     }
 
-    fn build_position_map(&self, program: &Program) -> HashMap<String, (usize, usize)> {
-        let mut position_map = HashMap::new();
-
-        // Add program name position if available
-        if let Some(line_col) = self.find_identifier_position(&program.name) {
-            position_map.insert(program.name.clone(), line_col);
-        }
-
-        // Process declarations to get positions of all variables
-        for decl in &program.declarations {
-            match decl {
-                Declaration::Variable(names, _)
-                | Declaration::Array(names, _, _)
-                | Declaration::VariableWithInit(names, _, _)
-                | Declaration::ArrayWithInit(names, _, _, _) => {
-                    for name in names {
-                        if let Some(line_col) = self.find_identifier_position(name) {
-                            position_map.insert(name.clone(), line_col);
-                        }
-                    }
-                }
-                Declaration::Constant(name, _, _) => {
-                    if let Some(line_col) = self.find_identifier_position(name) {
-                        position_map.insert(name.clone(), line_col);
-                    }
-                }
-            }
-        }
-
-        // Also collect positions from statements to improve error reporting
-        self.collect_statement_positions(&program.statements, &mut position_map);
-
-        position_map
+    fn print_ast(&self, ast: &Program) {
+        println!("{}", "AST:".green());
+        println!("{:#?}", ast);
     }
 
-    fn collect_statement_positions(
-        &self,
-        statements: &[Statement],
-        position_map: &mut HashMap<String, (usize, usize)>,
-    ) {
-        for statement in statements {
-            match statement {
-                Statement::Assignment(target, expr) => {
-                    // Collect identifiers from the target
-                    self.collect_expr_positions(target, position_map);
-                    // Collect identifiers from the expression
-                    self.collect_expr_positions(expr, position_map);
-                }
-                Statement::IfThen(condition, then_block) => {
-                    self.collect_expr_positions(condition, position_map);
-                    self.collect_statement_positions(then_block, position_map);
-                }
-                Statement::IfThenElse(condition, then_block, else_block) => {
-                    self.collect_expr_positions(condition, position_map);
-                    self.collect_statement_positions(then_block, position_map);
-                    self.collect_statement_positions(else_block, position_map);
-                }
-                Statement::DoWhile(body, condition) => {
-                    self.collect_statement_positions(body, position_map);
-                    self.collect_expr_positions(condition, position_map);
-                }
-                Statement::For(var, from, to, step, body) => {
-                    // Add position for the loop variable
-                    if let Some(line_col) = self.find_identifier_position(var) {
-                        position_map.insert(var.clone(), line_col);
-                    }
-                    self.collect_expr_positions(from, position_map);
-                    self.collect_expr_positions(to, position_map);
-                    self.collect_expr_positions(step, position_map);
-                    self.collect_statement_positions(body, position_map);
-                }
-                Statement::Input(var) => {
-                    self.collect_expr_positions(var, position_map);
-                }
-                Statement::Output(exprs) => {
-                    for expr in exprs {
-                        self.collect_expr_positions(expr, position_map);
+    fn print_symbol_table(&self, analyzer: &SemanticAnalyzer) {
+        println!("\n{}", "Symbol Table:".bold().underline());
+        let symbol_table = analyzer.get_symbol_table();
+        for symbol in symbol_table.get_all() {
+            let kind = match &symbol.kind {
+                SymbolKind::Variable => "Variable".cyan(),
+                SymbolKind::Constant => "Constant".yellow(),
+                SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
+            };
+    
+            let value = match &symbol.value {
+                SymbolValue::Single(lit) => format!("{}", Self::format_literal(lit)).green().to_string(),
+                SymbolValue::Array(values) => {
+                    if values.is_empty() {
+                        "[]".dimmed().to_string()
+                    } else {
+                        let elements: Vec<String> = values
+                            .iter()
+                            .map(|v| Self::format_literal(v))
+                            .collect();
+                        format!("[{}]", elements.join(", ")).green().to_string()
                     }
                 }
-                Statement::Empty => {}
-            }
+                SymbolValue::Uninitialized => "<uninitialized>".dimmed().to_string(),
+            };
+    
+            println!(
+                "{} {} {} = {} (line {}, col {})",
+                kind,
+                symbol.name.white(),
+                format!("({})", symbol.symbol_type).blue(),
+                value,
+                symbol.line,
+                symbol.column
+            );
         }
     }
-
-    fn collect_expr_positions(
-        &self,
-        expr: &Expression,
-        position_map: &mut HashMap<String, (usize, usize)>,
-    ) {
-        match expr {
-            Expression::Identifier(name) => {
-                if let Some(line_col) = self.find_identifier_position(name) {
-                    position_map.insert(name.clone(), line_col);
-                }
-            }
-            Expression::ArrayAccess(name, index) => {
-                if let Some(line_col) = self.find_identifier_position(name) {
-                    position_map.insert(name.clone(), line_col);
-
-                    // Also track array_name[] as a separate key
-                    let array_access_key = format!("{}_access", name);
-                    position_map.insert(array_access_key, line_col);
-                }
-                self.collect_expr_positions(index, position_map);
-            }
-            Expression::BinaryOp(left, _, right) => {
-                self.collect_expr_positions(left, position_map);
-                self.collect_expr_positions(right, position_map);
-            }
-            Expression::UnaryOp(_, operand) => {
-                self.collect_expr_positions(operand, position_map);
-            }
-            Expression::Literal(_) => {
-                // No identifiers to track in literals
-            }
+    
+    // Helper function to format literals more nicely
+    fn format_literal(lit: &LiteralKind) -> String {
+        match lit {
+            LiteralKind::Int(i) => i.to_string(),
+            LiteralKind::Float(f) => f.to_string(),
+            LiteralKind::String(s) => format!("\"{}\"", s),
         }
-    }
-
-    // Improved identifier position finder with more context
-    fn find_identifier_position(&self, name: &str) -> Option<(usize, usize)> {
-        // Simple search for identifier in source
-        let lines: Vec<&str> = self.source_code.lines().collect();
-
-        for (line_idx, line) in lines.iter().enumerate() {
-            let mut search_pos = 0;
-
-            // Look for all occurrences of the name in this line
-            while let Some(col_idx) = line[search_pos..].find(name) {
-                let actual_col_idx = search_pos + col_idx;
-
-                // Verify this is a proper identifier boundary
-                let is_valid_start = actual_col_idx == 0
-                    || !line
-                        .chars()
-                        .nth(actual_col_idx - 1)
-                        .unwrap_or(' ')
-                        .is_alphanumeric();
-                let end_idx = actual_col_idx + name.len();
-                let is_valid_end = end_idx >= line.len()
-                    || !line.chars().nth(end_idx).unwrap_or(' ').is_alphanumeric();
-
-                if is_valid_start && is_valid_end {
-                    return Some((line_idx + 1, actual_col_idx + 1)); // 1-based indexing
-                }
-
-                // Move past this occurrence
-                search_pos = actual_col_idx + 1;
-
-                // Safety check
-                if search_pos >= line.len() {
-                    break;
-                }
-            }
-        }
-
-        None
-    }
-}
+    }}

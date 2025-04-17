@@ -1,41 +1,43 @@
-use crate::parser::ast::{Literal, Type};
-use std::collections::HashMap;
+use crate::parser::ast::{LiteralKind, Type};
+use std::{collections::HashMap, default};
 
-/// Symbol kind (variable, constant, or array)
 #[derive(Debug, Clone, PartialEq)]
 pub enum SymbolKind {
     Variable,
     Constant,
-    Array(usize), // Contains array size
+    Array(usize),
 }
 
-/// Symbol information stored in the symbol table
+#[derive(Debug, Clone, PartialEq)]
+pub enum SymbolValue {
+    Single(LiteralKind),
+    Array(Vec<LiteralKind>),
+    Uninitialized,
+}
+
 #[derive(Debug, Clone)]
 pub struct Symbol {
     pub name: String,
     pub kind: SymbolKind,
     pub symbol_type: Type,
-    pub value: Option<Literal>,
+    pub value: SymbolValue,
+    pub is_constant: bool,
     pub line: usize,
     pub column: usize,
 }
 
-/// SymbolTable tracks all declared identifiers and their information
 #[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     symbols: HashMap<String, Symbol>,
 }
 
 impl SymbolTable {
-    /// Creates a new empty symbol table
     pub fn new() -> Self {
         SymbolTable {
             symbols: HashMap::new(),
         }
     }
 
-    /// Adds a variable or constant to the symbol table
-    /// Returns true if successful, false if the symbol already exists
     pub fn add_symbol(&mut self, symbol: Symbol) -> bool {
         if self.symbols.contains_key(&symbol.name) {
             return false;
@@ -57,5 +59,19 @@ impl SymbolTable {
     /// Gets all symbols
     pub fn get_all(&self) -> Vec<&Symbol> {
         self.symbols.values().collect()
+    }
+}
+
+impl default::Default for Symbol {
+    fn default() -> Self {
+        Symbol {
+            name: String::new(),
+            kind: SymbolKind::Variable,
+            symbol_type: Type::default(),
+            value: SymbolValue::Uninitialized,
+            line: 0,
+            column: 0,
+            is_constant: false,
+        }
     }
 }
