@@ -3,11 +3,14 @@ mod parser_tests {
     use rust_compiler::parser::ast::{
         DeclarationKind, ExpressionKind, LiteralKind, Operator, Program, StatementKind, Type,
     };
-    use rust_compiler::parser::parser_core::parse_source;
+    use rust_compiler::lexer::lexer_core::tokenize;
+    use rust_compiler::parser::parser_core::parse;
 
     /// Helper function to parse a source string and return the AST
     fn parse_test(source: &str) -> Program {
-        match parse_source(source) {
+        // Tokenize the source code
+        let (tokens, _) = tokenize(source);
+        match parse(tokens, source) {
             Ok(program) => program,
             Err(e) => panic!("Parse error: {}", e),
         }
@@ -541,14 +544,14 @@ mod parser_tests {
     #[test]
     fn test_empty_program() {
         let source = "";
-        let result = parse_source(source);
+        let result = parse(tokenize(source).0, source);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_unexpected_token() {
         let source = "MainPrgm test ; Var let x : Int ; BeginPg { x := ; } EndPg ;";
-        let result = parse_source(source);
+        let result = parse(tokenize(source).0, source);
         assert!(result.is_err());
     }
 
@@ -592,7 +595,7 @@ mod parser_tests {
     #[test]
     fn test_variable_declaration_missing_colon_invalid() {
         let source = "MainPrgm t; Var let erreur Int ; BeginPg { } EndPg ;";
-        let result = parse_source(source);
+        let result = parse(tokenize(source).0, source);
         assert!(result.is_err());
     }
 
@@ -614,7 +617,7 @@ mod parser_tests {
             "MainPrgm t; Var let un_nom_de_variable_trop_long_depassant_14_caracteres : Int ; BeginPg { } EndPg ;",
         ];
         for src in sources {
-            let result = parse_source(src);
+            let result = parse(tokenize(src).0, src);
             assert!(result.is_err());
         }
     }
@@ -630,7 +633,7 @@ mod parser_tests {
     #[test]
     fn test_constant_declaration_missing_equal_invalid() {
         let source = "MainPrgm t; Var @define Const EULER : Float 2.718 ; BeginPg { } EndPg ;";
-        let result = parse_source(source);
+        let result = parse(tokenize(source).0, source);
         assert!(result.is_err());
     }
 
@@ -686,7 +689,7 @@ mod parser_tests {
             "MainPrgm t; Var let reel_erreur3 : Float = 314. ; BeginPg { } EndPg ;",
         ];
         for src in sources {
-            let result = parse_source(src);
+            let result = parse(tokenize(src).0, src);
             assert!(result.is_err());
         }
     }

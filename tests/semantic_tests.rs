@@ -1,12 +1,14 @@
 #[cfg(test)]
 mod semantic_tests {
-    use rust_compiler::parser::parser_core::parse_source;
+    use rust_compiler::lexer::lexer_core::tokenize;
+    use rust_compiler::parser::parser_core::parse;
     use rust_compiler::semantics::analyzer_core::SemanticAnalyzer;
 
     /// Helper function to analyze code semantically and return error messages as strings
     fn analyze_test(source: &str) -> Vec<String> {
         // First parse the code to get an AST
-        let program = match parse_source(source) {
+        let tokens = tokenize(source);
+        let program = match parse(tokens.0, source) {
             Ok(program) => program,
             Err(e) => panic!("Parse error: {}", e),
         };

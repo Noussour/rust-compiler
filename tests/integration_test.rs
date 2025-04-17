@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod integration_test {
-    use rust_compiler::parser::parser_core::parse_source;
+    use rust_compiler::lexer::lexer_core::tokenize;
+    use rust_compiler::parser::parser_core::parse;
     use rust_compiler::semantics::analyzer_core::SemanticAnalyzer;
     use std::fs;
 
@@ -8,7 +9,8 @@ mod integration_test {
     fn test_valid_sample_program() {
         let test_file_path = "examples/valid/sample_program.ms";
         let input = fs::read_to_string(test_file_path).expect("Failed to read test file");
-        let program = parse_source(&input).expect("Parse error");
+        let tokens = tokenize(&input);
+        let program = parse(tokens.0, &input).expect("Parse error");
         let mut analyzer = SemanticAnalyzer::new(input);
         analyzer.analyze(&program);
         let errors = analyzer.get_errors();
@@ -19,7 +21,8 @@ mod integration_test {
     fn test_invalid_sample_program() {
         let test_file_path = "examples/invalid/invalid_program.ms";
         let input = fs::read_to_string(test_file_path).expect("Failed to read test file");
-        let program = parse_source(&input).expect("Parse error");
+        let tokens = tokenize(&input);
+        let program = parse(tokens.0, &input).expect("Parse error");
         let mut analyzer = SemanticAnalyzer::new(input);
         analyzer.analyze(&program);
         let errors = analyzer.get_errors();
@@ -33,7 +36,8 @@ mod integration_test {
             let path = entry.unwrap().path();
             if path.extension().map(|s| s == "ms").unwrap_or(false) {
                 let input = fs::read_to_string(&path).unwrap();
-                let program = parse_source(&input).expect("Parse error");
+                let tokens = tokenize(&input);
+                let program = parse(tokens.0, &input).expect("Parse error");
                 let mut analyzer = SemanticAnalyzer::new(input);
                 analyzer.analyze(&program);
                 let errors = analyzer.get_errors();
@@ -49,7 +53,8 @@ mod integration_test {
             let path = entry.unwrap().path();
             if path.extension().map(|s| s == "ms").unwrap_or(false) {
                 let input = fs::read_to_string(&path).unwrap();
-                let program = parse_source(&input).expect("Parse error");
+                let tokens = tokenize(&input);
+                let program = parse(tokens.0, &input).expect("Parse error");
                 let mut analyzer = SemanticAnalyzer::new(input);
                 analyzer.analyze(&program);
                 let errors = analyzer.get_errors();
