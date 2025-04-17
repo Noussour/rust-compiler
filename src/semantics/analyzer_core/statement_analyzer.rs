@@ -3,7 +3,6 @@ use crate::semantics::analyzer_core::SemanticAnalyzer;
 
 impl SemanticAnalyzer {
     pub fn analyze_statement(&mut self, stmt: &Statement) {
-        // Implementation of statement analysis
         match &stmt.node {
             StatementKind::Assignment(left, right) => {
                 // Handle assignment
@@ -32,7 +31,6 @@ impl SemanticAnalyzer {
                 // Analyze condition
                 self.analyze_expression(condition);
 
-                // Ensure condition is boolean
                 self.handle_condition(condition, Some("do-while condition"));
             }
 

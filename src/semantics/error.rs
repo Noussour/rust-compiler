@@ -63,14 +63,12 @@ impl ErrorReporter for SemanticError {
     fn report(&self, source_code: Option<&str>) -> String {
         let mut result = String::new();
 
-        // Error header with detailed message
         result.push_str(&format!(
             "{}: {}\n",
             "Semantic Error".red().bold(),
             self.get_detailed_message()
         ));
 
-        // File and position information
         let (line, column) = self.get_location_info();
         result.push_str(&format!(
             "{} line {}, column {}\n",
@@ -79,22 +77,18 @@ impl ErrorReporter for SemanticError {
             column
         ));
 
-        // Source context if available
         if let Some(source) = source_code {
             let lines: Vec<&str> = source.lines().collect();
             if line <= lines.len() && line > 0 {
                 let line_content = lines[line - 1];
 
-                // For duplicate declarations, highlight both occurrences
                 if let SemanticError::DuplicateDeclaration { original_line, .. } = self {
-                    // Current declaration
                     result.push_str(&format_code_context(
                         line_content,
                         column,
                         self.get_token_length(),
                     ));
 
-                    // Original declaration
                     if *original_line <= lines.len() {
                         let original_content = lines[original_line - 1];
                         result.push_str(&format!(
@@ -114,7 +108,6 @@ impl ErrorReporter for SemanticError {
             }
         }
 
-        // Add suggestion if available
         if let Some(suggestion) = self.get_suggestion() {
             result.push_str(&format!("{}: {}\n", "Suggestion".cyan().bold(), suggestion));
         }

@@ -24,9 +24,7 @@ pub fn tokenize_for_lalrpop(tokens: Vec<TokenWithMetaData>) -> Vec<Result<(usize
 
 
 /// Parses tokens into an AST
-/// Takes the lexer's tokens and turns them into a proper syntax tree
 pub fn parse(tokens: Vec<TokenWithMetaData>, source: &str) -> Result<Program, SyntaxError> {
-    // Convert tokens to LALRPOP format
      let lalrpop_tokens = tokenize_for_lalrpop(tokens);
     
      // Create an iterator that LALRPOP can use
@@ -36,12 +34,4 @@ pub fn parse(tokens: Vec<TokenWithMetaData>, source: &str) -> Result<Program, Sy
         Ok(located_program) => Ok(located_program.into_inner()),
         Err(e) => Err(convert_lalrpop_error(e, Some(source))),
     }
-}
-
-/// One-step parsing from source to AST
-/// Handles both lexing and parsing in a single function
-pub fn parse_source(source: &str) -> Result<Program, SyntaxError> {
-    // Tokenize the source code
-    let (tokens, _) = crate::lexer::lexer_core::tokenize(source);
-    parse(tokens, source)
 }

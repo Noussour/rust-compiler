@@ -471,4 +471,181 @@ mod semantic_tests {
         let errors = analyze_test(source);
         assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
     }
+
+    #[test]
+    fn test_array_size_negative_zero_float_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let tab_neg : [Int; -1];
+            let tab_zero : [Float; 0];
+            let tab_float : [Int; 2.5];
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ArraySizeInvalid"));
+    }
+
+    #[test]
+    fn test_identifier_invalid_semantics() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let var_ : Int;
+            let var__valide : Float;
+            let un_nom_de_variable_trop_long_depassant_14_caracteres : Int;
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "InvalidIdentifier"));
+    }
+
+    #[test]
+    fn test_constant_non_constant_value_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let variable : Int;
+            @define Const ERREUR : Int = variable;
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ConstantValueNotConstant"));
+    }
+
+    #[test]
+    fn test_type_unknown_semantic_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let inconnu : String;
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "UnknownType"));
+    }
+
+    #[test]
+    fn test_int_constant_out_of_bounds_semantic() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let trop_grand : Int = 32768;
+            let trop_petit : Int = (-32769);
+            BeginPg { } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "IntLiteralOutOfBounds"));
+    }
+
+    #[test]
+    fn test_assignment_to_constant_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            @define Const VALEUR : Int = 50;
+            BeginPg { VALEUR := 100; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ConstantModification"));
+    }
+
+    #[test]
+    fn test_assignment_to_undeclared_identifier_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            BeginPg { y := 5; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
+    }
+
+    #[test]
+    fn test_assignment_type_mismatch_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let entier : Int;
+            BeginPg { entier := 3.14; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "TypeMismatch"));
+    }
+
+    #[test]
+    fn test_assignment_array_index_out_of_bounds_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let data : [Int; 3];
+            BeginPg { data[3] := 7; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "ArrayIndexOutOfBounds"));
+    }
+
+    #[test]
+    fn test_for_loop_undeclared_variable_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            BeginPg { for m from 1 to 5 step 1 { } } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
+    }
+
+    #[test]
+    fn test_input_argument_not_identifier_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            BeginPg { input(123); } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(
+            &errors,
+            "InputArgumentNotIdentifier"
+        ));
+    }
+
+    #[test]
+    fn test_division_by_zero_semantic_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let err : Float;
+            BeginPg { err := 10 / 0; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "DivisionByZero"));
+    }
+
+    #[test]
+    fn test_operation_type_mismatch_invalid() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let nbr : Int;
+            let flottant : Float;
+            let resultat : Int;
+            BeginPg { resultat := nbr AND flottant; } EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(!errors.is_empty());
+        assert!(contains_error_of_type(&errors, "TypeMismatch"));
+    }
 }

@@ -282,7 +282,6 @@ pub fn convert_lalrpop_error<T>(
 where
     T: ToString,
 {
-    // Helper function to get line and column from position
     let get_position_info = |pos: usize| -> (usize, usize, Option<String>) {
         if let Some(code) = source_code {
             let mut line = 1;

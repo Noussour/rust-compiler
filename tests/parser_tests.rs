@@ -551,4 +551,143 @@ mod parser_tests {
         let result = parse_source(source);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_minimal_program_structure_valid() {
+        let source = "
+            MainPrgm L3_software ;
+            Var
+            BeginPg
+            {
+            }
+            EndPg ;
+        ";
+        let program = parse_test(source);
+        assert_eq!(program.name, "L3_software");
+    }
+
+    #[test]
+    fn test_variable_declaration_simple_valid() {
+        let source = "MainPrgm t; Var let x : Int ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Variable(names, typ) if names.contains(&"x".to_string()) && matches!(typ, Type::Int))));
+    }
+
+    #[test]
+    fn test_variable_declaration_array_valid() {
+        let source = "MainPrgm t; Var let tableau : [Float ; 5] ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Array(names, typ, size) if names.contains(&"tableau".to_string()) && matches!(typ, Type::Float) && *size == 5)));
+    }
+
+    #[test]
+    fn test_variable_declaration_multiple_valid() {
+        let source =
+            "MainPrgm t; Var let a, b, c : Int ; let tab1, tab2 : [Int ; 10] ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Variable(names, typ) if names.contains(&"a".to_string()) && matches!(typ, Type::Int))));
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Array(names, typ, size) if names.contains(&"tab1".to_string()) && matches!(typ, Type::Int) && *size == 10)));
+    }
+
+    #[test]
+    fn test_variable_declaration_missing_colon_invalid() {
+        let source = "MainPrgm t; Var let erreur Int ; BeginPg { } EndPg ;";
+        let result = parse_source(source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_array_declaration_invalid_sizes() {
+        let source = "MainPrgm t; Var let tab_erreur : [Int ; -1] ; let tab_erreur2 : [Float ; 0] ; let tab_erreur3 : [Int ; 2.5] ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        // Semantic error, not parser error, so just check parsing succeeds
+        assert_eq!(program.declarations.len(), 3);
+    }
+
+    #[test]
+    fn test_identifier_invalid_lexical() {
+        let sources = [
+            "MainPrgm t; Var let 1abc : Int ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let var- : Float ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let var_ : Int ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let var__valide : Float ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let un_nom_de_variable_trop_long_depassant_14_caracteres : Int ; BeginPg { } EndPg ;",
+        ];
+        for src in sources {
+            let result = parse_source(src);
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    fn test_constant_declaration_valid() {
+        let source = "MainPrgm t; Var @define Const PI : Float = 3.14 ; @define Const MAX_SIZE : Int = 100 ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Constant(name, typ, _) if name == "PI" && matches!(typ, Type::Float))));
+        assert!(program.declarations.iter().any(|d| matches!(&d.node, DeclarationKind::Constant(name, typ, _) if name == "MAX_SIZE" && matches!(typ, Type::Int))));
+    }
+
+    #[test]
+    fn test_constant_declaration_missing_equal_invalid() {
+        let source = "MainPrgm t; Var @define Const EULER : Float 2.718 ; BeginPg { } EndPg ;";
+        let result = parse_source(source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_constant_declaration_non_constant_value_invalid() {
+        let source = "MainPrgm t; Var let variable : Int ; @define Const ERREUR : Int = variable ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        // Semantic error, not parser error, so just check parsing succeeds
+        assert!(program.declarations.len() >= 2);
+    }
+
+    #[test]
+    fn test_type_usage_valid() {
+        let source = "MainPrgm t; Var let entier : Int ; let reel : Float ; @define Const ZERO_INT : Int = 0 ; @define Const ZERO_FLOAT : Float = 0.0 ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() >= 4);
+    }
+
+    #[test]
+    fn test_type_unknown_invalid() {
+        let source = "MainPrgm t; Var let inconnu : String ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        // Semantic error, not parser error, so just check parsing succeeds
+        assert!(program.declarations.len() == 1);
+    }
+
+    #[test]
+    fn test_int_constants_valid() {
+        let source = "MainPrgm t; Var let pos : Int = 123 ; let neg : Int = (-456) ; let zero : Int = 0 ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() == 3);
+    }
+
+    #[test]
+    fn test_int_constants_out_of_bounds_invalid() {
+        let source = "MainPrgm t; Var let trop_grand : Int = 32768 ; let trop_petit : Int = (-32769) ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() == 2);
+    }
+
+    #[test]
+    fn test_float_constants_valid() {
+        let source = "MainPrgm t; Var let pi_valide : Float = 3.14159 ; let neg_reel : Float = (-2.718) ; let pos_reel : Float = (+1.618) ; BeginPg { } EndPg ;";
+        let program = parse_test(source);
+        assert!(program.declarations.len() == 3);
+    }
+
+    #[test]
+    fn test_float_constants_invalid_format() {
+        let sources = [
+            "MainPrgm t; Var let reel_erreur : Float = 3. ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let reel_erreur2 : Float = .14 ; BeginPg { } EndPg ;",
+            "MainPrgm t; Var let reel_erreur3 : Float = 314. ; BeginPg { } EndPg ;",
+        ];
+        for src in sources {
+            let result = parse_source(src);
+            assert!(result.is_err());
+        }
+    }
 }

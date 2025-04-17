@@ -29,7 +29,7 @@ BeginPg
   
   result := numbers[10];
   
-  result := (numbers[1] * 2) + (true AND false);
+  result := (numbers[-1] * 2) + (true AND false);
   
   undeclared_var := Max_value / 0 + numbers[10];
   

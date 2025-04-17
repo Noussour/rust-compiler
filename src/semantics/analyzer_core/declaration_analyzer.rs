@@ -8,7 +8,6 @@ use crate::semantics::symbol_table::{Symbol, SymbolKind};
 
 impl SemanticAnalyzer {
     pub fn analyze_declaration(&mut self, declaration: &Declaration) {
-        // Implementation of declaration analysis
         match &declaration.node {
             DeclarationKind::Variable(items, typ) => {
                 for item in items {
@@ -71,7 +70,6 @@ impl SemanticAnalyzer {
             _ => {}
         }
 
-        // Add to symbol table
         let line = self.source_map.get_line(span);
         let column = self.source_map.get_column(span);
 
@@ -82,7 +80,7 @@ impl SemanticAnalyzer {
             value: Some(literal.node.clone()),
             line,
             column,
-            is_constant: true, // Set is_constant to true for constants
+            is_constant: true,
         };
 
         self.symbol_table.add_symbol(symbol);
@@ -96,7 +94,6 @@ impl SemanticAnalyzer {
             return;
         }
 
-        // Add to symbol table
         let line = self.source_map.get_line(span);
         let column = self.source_map.get_column(span);
 
@@ -107,7 +104,7 @@ impl SemanticAnalyzer {
             value: None,
             line,
             column,
-            is_constant: false, // Set is_constant to false for variables
+            is_constant: false, 
         };
         self.symbol_table.add_symbol(symbol);
     }
@@ -120,7 +117,6 @@ impl SemanticAnalyzer {
             return;
         }
 
-        // Add to symbol table
         let line = self.source_map.get_line(span);
         let column = self.source_map.get_column(span);
 
@@ -153,7 +149,6 @@ impl SemanticAnalyzer {
             }
         }
 
-        // Add to symbol table
         self.handle_variable_declaration(name, typ, span);
     }
 
@@ -180,7 +175,6 @@ impl SemanticAnalyzer {
             }
         }
 
-        // Add to symbol table
         self.handle_array_declaration(name, typ, size, span);
     }
 }

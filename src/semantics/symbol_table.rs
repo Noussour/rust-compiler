@@ -1,15 +1,13 @@
 use crate::parser::ast::{LiteralKind, Type};
 use std::{collections::HashMap, default};
 
-/// Symbol kind (variable, constant, or array)
 #[derive(Debug, Clone, PartialEq)]
 pub enum SymbolKind {
     Variable,
     Constant,
-    Array(usize), // Contains array size
+    Array(usize),
 }
 
-/// Symbol information stored in the symbol table
 #[derive(Debug, Clone)]
 pub struct Symbol {
     pub name: String,
@@ -21,22 +19,18 @@ pub struct Symbol {
     pub column: usize,
 }
 
-/// SymbolTable tracks all declared identifiers and their information
 #[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     symbols: HashMap<String, Symbol>,
 }
 
 impl SymbolTable {
-    /// Creates a new empty symbol table
     pub fn new() -> Self {
         SymbolTable {
             symbols: HashMap::new(),
         }
     }
 
-    /// Adds a variable or constant to the symbol table
-    /// Returns true if successful, false if the symbol already exists
     pub fn add_symbol(&mut self, symbol: Symbol) -> bool {
         if self.symbols.contains_key(&symbol.name) {
             return false;

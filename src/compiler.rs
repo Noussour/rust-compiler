@@ -11,7 +11,7 @@ use std::fs;
 pub struct Compiler {
     source_code: String,
     file_path: String,
-    quadruples: Option<QuadrupleProgram>, // Add this field
+    quadruples: Option<QuadrupleProgram>,
 }
 
 impl Compiler {
@@ -20,7 +20,7 @@ impl Compiler {
             Ok(content) => Ok(Self {
                 source_code: content,
                 file_path: file_path.to_string(),
-                quadruples: None, // Initialize as None
+                quadruples: None,
             }),
             Err(e) => Err(format!("Error reading file '{}': {}", file_path, e)),
         }
@@ -110,7 +110,6 @@ impl Compiler {
         }
     }
 
-    // Add this new method
     fn perform_code_generation(&mut self, program: &Program) -> Result<(), i32> {
         println!("\n{}", "Code Generation:".bold().underline());
 
@@ -127,7 +126,6 @@ impl Compiler {
         Ok(())
     }
 
-    // Add this method to display quadruples
     fn print_quadruples(&self) {
         if let Some(quadruples) = &self.quadruples {
             println!("{}", "Generated Quadruples:".bold().underline());
