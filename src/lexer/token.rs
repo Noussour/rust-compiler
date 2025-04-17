@@ -149,11 +149,14 @@ impl fmt::Display for Token {
 
 fn parse_int_literal(lex: &mut logos::Lexer<Token>) -> Option<i32> {
     let s = lex.slice();
-    if s.starts_with('(') {
+    let parsed = if s.starts_with('(') {
         s[1..s.len()-1].parse().ok()
     } else {
         s.parse().ok()
-    }
+    };
+
+    // Only accept values in i16 range
+    parsed.filter(|&val| (-32768..=32767).contains(&val))
 }
 
 fn parse_float_literal(lex: &mut logos::Lexer<Token>) -> Option<f32> {

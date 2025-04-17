@@ -33,11 +33,11 @@ impl LexicalError {
             LexicalErrorType::UnterminatedString
         } else if token.value.contains(|c: char| !c.is_ascii()) {
             LexicalErrorType::NonAsciiCharacters
-        } else if token.value.chars().all(|c| c.is_ascii_digit()) {
-            match token.value.parse::<i32>() {
-                Ok(_) => LexicalErrorType::InvalidToken,
-                Err(_) => LexicalErrorType::IntegerOutOfRange,
-            }
+        } else if token.value.chars().all(|c| c.is_ascii_digit()) || 
+                  (token.value.starts_with('(') && 
+                   token.value.ends_with(')') && 
+                   token.value[1..token.value.len()-1].chars().any(|c| c.is_ascii_digit())) {
+                    LexicalErrorType::IntegerOutOfRange
         } else if (token.value.starts_with('-') || token.value.starts_with('+'))
             && !token.value.starts_with("(-")
             && !token.value.starts_with("(+")
@@ -149,8 +149,7 @@ impl ErrorReporter for LexicalError {
                     .to_string(),
             ),
             LexicalErrorType::IntegerOutOfRange => {
-                Some("Integer literals must be within the valid range".to_string())
-            }
+                Some("Integer literals must be within the range of -32768 to 32767 (16-bit signed integer)".to_string())            }
             LexicalErrorType::SignedNumberNotParenthesized => {
                 Some("Signed numbers must be parenthesized".to_string())
             }
