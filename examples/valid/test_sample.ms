@@ -1,6 +1,6 @@
 MainPrgm empty;
 Var
-let x: Float = 3;
+let x: Int = 42768;
 
 BeginPg
 {
