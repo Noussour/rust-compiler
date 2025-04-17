@@ -211,13 +211,8 @@ mod parser_tests {
 
         assert_eq!(program.declarations.len(), 2);
 
-<<<<<<< HEAD
-        match &program.declarations[0] {
-            Declaration::Constant(name, typ, value) => {
-=======
         match &program.declarations[0].node {
             DeclarationKind::Constant(name, typ, value) => {
->>>>>>> Adel
                 assert_eq!(name, "Pi");
                 assert!(matches!(typ, Type::Float));
                 assert!(matches!(&value.node, LiteralKind::Float(v) if *v == 3.14));
@@ -225,13 +220,8 @@ mod parser_tests {
             _ => panic!("Expected constant declaration"),
         }
 
-<<<<<<< HEAD
-        match &program.declarations[1] {
-            Declaration::Constant(name, typ, value) => {
-=======
         match &program.declarations[1].node {
             DeclarationKind::Constant(name, typ, value) => {
->>>>>>> Adel
                 assert_eq!(name, "Max");
                 assert!(matches!(typ, Type::Int));
                 assert!(matches!(&value.node, LiteralKind::Int(v) if *v == 100));

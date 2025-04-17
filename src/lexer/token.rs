@@ -113,20 +113,7 @@ pub enum Token {
     Not,
 
     // Literals
-<<<<<<< HEAD
-    #[regex("(\\([+-][0-9]+\\))|([0-9]+)", |lex| {
-        let s = lex.slice();
-        let parsed: Option<i32> = if s.starts_with('(') {
-            s[1..s.len()-1].parse().ok()
-        } else {
-            s.parse().ok()
-        };
-        
-        parsed.filter(|&val| (-32768..=32767).contains(&val))
-    })]
-=======
     #[regex("(\\([+-][0-9]+\\))|([0-9]+)", parse_int_literal)]
->>>>>>> Adel
     IntLiteral(i32),
 
     #[regex("(\\([+-][0-9]+\\.[0-9]+\\))|([0-9]+\\.[0-9]+)", parse_float_literal)]
