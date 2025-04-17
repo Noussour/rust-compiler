@@ -8,12 +8,19 @@ pub enum SymbolKind {
     Array(usize),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum SymbolValue {
+    Single(LiteralKind),
+    Array(Vec<LiteralKind>),
+    Uninitialized,
+}
+
 #[derive(Debug, Clone)]
 pub struct Symbol {
     pub name: String,
     pub kind: SymbolKind,
     pub symbol_type: Type,
-    pub value: Option<LiteralKind>,
+    pub value: SymbolValue,
     pub is_constant: bool,
     pub line: usize,
     pub column: usize,
@@ -61,7 +68,7 @@ impl default::Default for Symbol {
             name: String::new(),
             kind: SymbolKind::Variable,
             symbol_type: Type::default(),
-            value: None,
+            value: SymbolValue::Uninitialized,
             line: 0,
             column: 0,
             is_constant: false,

@@ -2,12 +2,10 @@ mod declaration_analyzer;
 mod statement_analyzer;
 mod expression_analyzer;
 
-
-
 use crate::parser::ast::{Program, Type, Expression, ExpressionKind, Operator, LiteralKind};
 use crate::semantics::error::SemanticError;
 use crate::semantics::source_map::SourceMap;
-use crate::semantics::symbol_table::SymbolTable;
+use crate::semantics::symbol_table::{SymbolTable, SymbolValue, SymbolKind};
 use std::collections::HashSet;
 use std::ops::Range;
 
@@ -46,6 +44,23 @@ impl SemanticAnalyzer {
     // Error helper methods
     fn empty_program(&mut self) {
         self.add_error(SemanticError::EmptyProgram);
+    }
+
+
+    fn array_size_mismatch_error(
+        &mut self,
+        span: &Range<usize>,
+        name: &str,
+        expected: usize,
+        actual: usize,
+    ) {
+        self.add_error(SemanticError::ArraySizeMismatch {
+            name: name.to_string(),
+            expected,
+            actual,
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
     }
 
     fn type_mismatch_error(
@@ -159,12 +174,17 @@ impl SemanticAnalyzer {
     pub fn evaluate_constant_expression(&mut self, expr: &Expression) -> Option<LiteralKind> {
         match &expr.node {
             ExpressionKind::Literal(lit) => {
-                Some(lit.node.clone())},
+                Some(lit.node.clone())
+            },
             
             ExpressionKind::Identifier(name) => {
                 if let Some(symbol) = self.symbol_table.get(name) {
                     if symbol.is_constant {
-                        return symbol.value.clone();
+                        match &symbol.value {
+                            SymbolValue::Single(lit) => return Some(lit.clone()),
+                            SymbolValue::Array(_) => return None, // Array as a whole isn't a literal value
+                            SymbolValue::Uninitialized => return None,
+                        }
                     }
                 }
                 None
@@ -204,6 +224,28 @@ impl SemanticAnalyzer {
                     },
                     _ => None,
                 }
+            }
+            ExpressionKind::ArrayAccess(name, index_expr) => {
+                // Handle array access for constant expressions
+                // First evaluate the index expression to avoid borrowing conflicts
+                let index_value = self.evaluate_constant_expression(index_expr);
+                
+                if let Some(symbol) = self.symbol_table.get(name) {
+                    // Check if we're accessing an array
+                    if let SymbolKind::Array(_) = symbol.kind {
+                        // Use the previously evaluated index
+                        if let Some(LiteralKind::Int(idx)) = index_value {
+                            // If index is constant and array has values
+                            if let SymbolValue::Array(values) = &symbol.value {
+                                let idx = idx as usize;
+                                if idx < values.len() {
+                                    return Some(values[idx].clone());
+                                }
+                            }
+                        }
+                    }
+                }
+                None
             }
             _ => None,
         }

@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::parser::ast::{
     Expression, ExpressionKind, Literal, LiteralKind, Located, Operator, Type, UnaryOperator,
 };
-use crate::semantics::{analyzer_core::SemanticAnalyzer, symbol_table::SymbolKind};
+use crate::semantics::{analyzer_core::SemanticAnalyzer, symbol_table::{SymbolKind, SymbolValue}};
 
 pub struct ValueType {
     pub value: Option<f32>,
@@ -55,14 +55,17 @@ impl SemanticAnalyzer {
         }
 
         let symbol = self.symbol_table.get(name).unwrap();
-        Some(ValueType::new(
-            symbol.symbol_type.clone(),
-            symbol.value.as_ref().and_then(|v| match v {
+        let value = match &symbol.value {
+            SymbolValue::Single(lit) => match lit {
                 LiteralKind::Float(f) => Some(*f),
                 LiteralKind::Int(i) => Some(*i as f32),
                 _ => None,
-            }),
-        ))
+            },
+            SymbolValue::Uninitialized => None,
+            SymbolValue::Array(_) => None, // Array as a whole doesn't have a single value
+        };
+        
+        Some(ValueType::new(symbol.symbol_type.clone(), value))
     }
 
     fn handle_array_access(
@@ -82,6 +85,7 @@ impl SemanticAnalyzer {
                 let symbol_type = symbol.symbol_type.clone();
                 let array_size = *size;
 
+                // Validate index if it's a constant
                 if let ExpressionKind::Literal(Located {
                     node: LiteralKind::Int(idx),
                     ..
@@ -96,8 +100,22 @@ impl SemanticAnalyzer {
                         );
                         return None;
                     }
+                    
+                    // If we have a constant index and the array is initialized, 
+                    // we can try to get the actual value
+                    if let SymbolValue::Array(values) = &symbol.value {
+                        if (*idx as usize) < values.len() {
+                            let value = match &values[*idx as usize] {
+                                LiteralKind::Int(i) => Some(*i as f32),
+                                LiteralKind::Float(f) => Some(*f),
+                                _ => None,
+                            };
+                            return Some(ValueType::new(symbol_type, value));
+                        }
+                    }
                 }
 
+                // Validate that index is an integer
                 let idx_type = self.analyze_expression(index_expression);
                 if let Some(idx_type) = idx_type {
                     if idx_type.typ != Type::Int {
@@ -113,6 +131,8 @@ impl SemanticAnalyzer {
                     return None;
                 }
 
+                // Return the array element type, but without a specific value 
+                // (since we can't determine at compile time which element will be accessed)
                 Some(ValueType::new(symbol_type, None))
             },
             SymbolKind::Variable => {

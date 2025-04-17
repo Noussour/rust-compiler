@@ -2,8 +2,9 @@ use crate::codegen::generator::CodeGenerator;
 use crate::codegen::quadruple::QuadrupleProgram;
 use crate::error_reporter::ErrorReportFormatter;
 use crate::lexer::lexer_core::{tokenize, TokenWithMetaData};
-use crate::parser::ast::Program;
+use crate::parser::ast::{LiteralKind, Program};
 use crate::parser::parser_core::parse;
+use crate::semantics::symbol_table::SymbolValue;
 use crate::semantics::{symbol_table::SymbolKind, SemanticAnalyzer};
 use colored::*;
 use std::fs;
@@ -175,13 +176,23 @@ impl Compiler {
                 SymbolKind::Constant => "Constant".yellow(),
                 SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
             };
-
-            let value = if let Some(val) = &symbol.value {
-                format!("{:?}", val).green()
-            } else {
-                "<uninitialized>".dimmed()
+    
+            let value = match &symbol.value {
+                SymbolValue::Single(lit) => format!("{}", Self::format_literal(lit)).green().to_string(),
+                SymbolValue::Array(values) => {
+                    if values.is_empty() {
+                        "[]".dimmed().to_string()
+                    } else {
+                        let elements: Vec<String> = values
+                            .iter()
+                            .map(|v| Self::format_literal(v))
+                            .collect();
+                        format!("[{}]", elements.join(", ")).green().to_string()
+                    }
+                }
+                SymbolValue::Uninitialized => "<uninitialized>".dimmed().to_string(),
             };
-
+    
             println!(
                 "{} {} {} = {} (line {}, col {})",
                 kind,
@@ -193,4 +204,12 @@ impl Compiler {
             );
         }
     }
-}
+    
+    // Helper function to format literals more nicely
+    fn format_literal(lit: &LiteralKind) -> String {
+        match lit {
+            LiteralKind::Int(i) => i.to_string(),
+            LiteralKind::Float(f) => f.to_string(),
+            LiteralKind::String(s) => format!("\"{}\"", s),
+        }
+    }}

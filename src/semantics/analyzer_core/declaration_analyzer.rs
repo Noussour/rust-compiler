@@ -4,7 +4,7 @@ use crate::parser::ast::{
     Declaration, DeclarationKind, Expression, Literal, LiteralKind, Type,
 };
 use crate::semantics::analyzer_core::SemanticAnalyzer;
-use crate::semantics::symbol_table::{Symbol, SymbolKind};
+use crate::semantics::symbol_table::{Symbol, SymbolKind, SymbolValue};
 
 impl SemanticAnalyzer {
     pub fn analyze_declaration(&mut self, declaration: &Declaration) {
@@ -77,7 +77,7 @@ impl SemanticAnalyzer {
             name: value.to_string(),
             kind: SymbolKind::Constant,
             symbol_type: typ.clone(),
-            value: Some(literal.node.clone()),
+            value: SymbolValue::Single(literal.node.clone()),
             line,
             column,
             is_constant: true,
@@ -101,7 +101,7 @@ impl SemanticAnalyzer {
             name: name.to_string(),
             kind: SymbolKind::Variable,
             symbol_type: typ.clone(),
-            value: None,
+            value: SymbolValue::Uninitialized,
             line,
             column,
             is_constant: false, 
@@ -124,7 +124,7 @@ impl SemanticAnalyzer {
             name: name.to_string(),
             kind: SymbolKind::Array(size),
             symbol_type: typ.clone(),
-            value: None,
+            value: SymbolValue::Uninitialized,
             line,
             column,
             is_constant: false,
@@ -143,13 +143,39 @@ impl SemanticAnalyzer {
         // First, check the expression
         let expr_type = self.analyze_expression(expr);
 
+        // Try to evaluate the expression if it's a constant
+        let value = self.evaluate_constant_expression(expr);
+        
         if let Some(expr_type) = expr_type {
             if !expr_type.get_type().is_compatible_with(typ) {
                 self.type_mismatch_error(span, typ, &expr_type.get_type(), Some("assignment"));
             }
         }
 
-        self.handle_variable_declaration(name, typ, span);
+        // Check for duplicate declaration
+        if self.symbol_table.contains(name) {
+            let existing = self.symbol_table.get(name).unwrap();
+            self.duplicate_declaration_error(span, name, existing.line, existing.column);
+            return;
+        }
+
+        let line = self.source_map.get_line(span);
+        let column = self.source_map.get_column(span);
+
+        let symbol = Symbol {
+            name: name.to_string(),
+            kind: SymbolKind::Variable,
+            symbol_type: typ.clone(),
+            value: match value {
+                Some(lit) => SymbolValue::Single(lit),
+                None => SymbolValue::Uninitialized,
+            },
+            line,
+            column,
+            is_constant: false,
+        };
+        
+        self.symbol_table.add_symbol(symbol);
     }
 
     fn handle_array_declaration_with_init(
@@ -161,9 +187,13 @@ impl SemanticAnalyzer {
         span: &Range<usize>,
     ) {
         // Check that array size matches number of initializers
-        if exprs.len() == size {
-            println!("to check later")
+        if exprs.len() != size {
+            self.array_size_mismatch_error(span, name, size, exprs.len());
         }
+
+        // Process each expression and collect values
+        let mut array_values = Vec::new();
+        let mut all_values_evaluated = true;
 
         // Check each value's type
         for expr in exprs {
@@ -173,8 +203,39 @@ impl SemanticAnalyzer {
                     self.type_mismatch_error(span, typ, &value_type.get_type(), Some("array initializer"));
                 }
             }
+            
+            // Try to evaluate as constant expression
+            if let Some(value) = self.evaluate_constant_expression(expr) {
+                array_values.push(value);
+            } else {
+                all_values_evaluated = false;
+            }
         }
 
-        self.handle_array_declaration(name, typ, size, span);
+        // Check for duplicate declaration
+        if self.symbol_table.contains(name) {
+            let existing = self.symbol_table.get(name).unwrap();
+            self.duplicate_declaration_error(span, name, existing.line, existing.column);
+            return;
+        }
+
+        let line = self.source_map.get_line(span);
+        let column = self.source_map.get_column(span);
+
+        let symbol = Symbol {
+            name: name.to_string(),
+            kind: SymbolKind::Array(size),
+            symbol_type: typ.clone(),
+            value: if all_values_evaluated && array_values.len() == size {
+                SymbolValue::Array(array_values)
+            } else {
+                SymbolValue::Uninitialized
+            },
+            line,
+            column,
+            is_constant: false,
+        };
+
+        self.symbol_table.add_symbol(symbol);
     }
 }

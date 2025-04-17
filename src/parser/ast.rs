@@ -58,7 +58,7 @@ impl Type {
             (Type::String, Type::String) => true,
             
             // Int can be converted to Float
-            (Type::Int, Type::Float) => true,
+            // (Type::Int, Type::Float) => true,
             
             // All other combinations are incompatible
             _ => false,

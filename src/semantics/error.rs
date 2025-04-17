@@ -5,6 +5,15 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum SemanticError {
+    /// Array size and declaration mismatch
+    ArraySizeMismatch {
+        name: String,
+        expected: usize,
+        actual: usize,
+        line: usize,
+        column: usize,
+    },
+
     /// Variable not declared before use
     UndeclaredIdentifier {
         name: String,
@@ -117,6 +126,15 @@ impl ErrorReporter for SemanticError {
 
     fn get_suggestion(&self) -> Option<String> {
         match self {
+            SemanticError::ArraySizeMismatch {
+                name,
+                expected,
+                actual,
+                ..
+            } => Some(format!(
+                "Expected array size {} but found {} for '{}'",
+                expected, actual, name
+            )),
             SemanticError::UndeclaredIdentifier { name, .. } => {
                 Some(format!("Declare variable '{}' before using it", name))
             }
@@ -176,6 +194,7 @@ impl ErrorReporter for SemanticError {
 
     fn get_location_info(&self) -> (usize, usize) {
         match self {
+            SemanticError::ArraySizeMismatch { line, column, .. } => (*line, *column),
             SemanticError::UndeclaredIdentifier { line, column, .. } => (*line, *column),
             SemanticError::DuplicateDeclaration { line, column, .. } => (*line, *column),
             SemanticError::TypeMismatch { line, column, .. } => (*line, *column),
@@ -192,6 +211,15 @@ impl ErrorReporter for SemanticError {
 impl SemanticError {
     fn get_detailed_message(&self) -> String {
         match self {
+            SemanticError::ArraySizeMismatch {
+                name,
+                expected,
+                actual,
+                ..
+            } => format!(
+                "Array size mismatch for '{}': expected {}, found {}",
+                name, expected, actual
+            ),
             SemanticError::UndeclaredIdentifier { name, .. } => {
                 format!("Undeclared identifier '{}'", name)
             }
@@ -245,6 +273,7 @@ impl SemanticError {
 
     fn get_token_length(&self) -> usize {
         match self {
+            SemanticError::ArraySizeMismatch { name, .. } => name.len(),
             SemanticError::UndeclaredIdentifier { name, .. } => name.len(),
             SemanticError::DuplicateDeclaration { name, .. } => name.len(),
             SemanticError::TypeMismatch { .. } => 1, // Default token length
