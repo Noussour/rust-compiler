@@ -20,3 +20,7 @@ clap = "4"
 
 [build-dependencies]
 lalrpop = "0.22.1"
+
+[[bin]]
+name = "msrc"
+path = "src/main.rs"

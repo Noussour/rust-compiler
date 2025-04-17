@@ -162,9 +162,9 @@ impl Compiler {
 
     fn print_ast(&self, ast: &Program) {
         println!("{}", "AST:".green());
-        println!("{:#?}", ast);
+        ast.pretty_print();
     }
-
+    
     fn print_symbol_table(&self, analyzer: &SemanticAnalyzer) {
         println!("\n{}", "Symbol Table:".bold().underline());
         let symbol_table = analyzer.get_symbol_table();
