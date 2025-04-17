@@ -1,7 +1,5 @@
 use colored::Colorize;
 
-
-// Utility function to format code context with error highlighting
 pub fn format_code_context(source_line: &str, column: usize, token_length: usize) -> String {
     let mut result: String = String::new();
     
@@ -27,12 +25,11 @@ pub fn format_code_context(source_line: &str, column: usize, token_length: usize
     result
 }
 
-// A trait for all error types to implement for consistent formatting
 pub trait ErrorReporter {
     fn report(&self, source_code: Option<&str>) -> String;
     fn get_suggestion(&self) -> Option<String>;
     fn get_error_name(&self) -> String;
-    fn get_location_info(&self) -> (usize, usize); // line, column
+    fn get_location_info(&self) -> (usize, usize);
 }
 
 pub struct ErrorReportFormatter;
@@ -46,7 +43,6 @@ impl ErrorReportFormatter {
         
         for (_i, error) in errors.iter().enumerate() {
             
-            // Print the full error report
             let report = error.report(source_code);
             for line in report.lines() {
                 println!("      {}", line);

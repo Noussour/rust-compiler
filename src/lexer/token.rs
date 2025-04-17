@@ -193,7 +193,7 @@ pub struct Line {
 impl Default for Line {
     fn default() -> Self {
         Line {
-            line_number: 1, // Start at line 1
+            line_number: 1,
             line_start: 0,
         }
     }

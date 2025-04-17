@@ -1,6 +1,6 @@
-use logos::{Lexer, Logos};
-use crate::lexer::token::Token;
 use crate::lexer::error::LexicalError;
+use crate::lexer::token::Token;
+use logos::{Lexer, Logos};
 use std::ops::Range;
 
 // Token with its source position information
@@ -47,8 +47,6 @@ pub fn tokenize(source: &str) -> (Vec<TokenWithMetaData>, Vec<LexicalError>) {
                     column,
                     span,
                 };
-
-                // Use LexicalError::new to determine and push the error
                 errors.push(LexicalError::new(invalid_token));
             }
         };

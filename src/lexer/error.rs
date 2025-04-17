@@ -28,24 +28,12 @@ pub struct LexicalError {
 }
 
 impl LexicalError {
-    /// Create a new `LexicalError` by analyzing the token value.
     pub fn new(token: TokenWithMetaData) -> Self {
         let error_type = if token.value.starts_with('"') && !token.value.ends_with('"') {
             LexicalErrorType::UnterminatedString
         } else if token.value.contains(|c: char| !c.is_ascii()) {
             LexicalErrorType::NonAsciiCharacters
-        } else if token.value.len() > 14 {
-            LexicalErrorType::IdentifierTooLong
-        } else if token.value.contains("__") {
-            LexicalErrorType::ConsecutiveUnderscores
-        } else if token.value.ends_with('_') {
-            LexicalErrorType::TrailingUnderscore
-        } else if token.value.starts_with(|c: char| c.is_numeric()) {
-            LexicalErrorType::IdentifierStartsWithNumber
-        } else if token.value.chars().skip(1).any(|c| c.is_ascii_uppercase()) {
-            LexicalErrorType::InvalidIdentifier
         } else if token.value.chars().all(|c| c.is_ascii_digit()) {
-            // Check for integer out of range
             match token.value.parse::<i32>() {
                 Ok(_) => LexicalErrorType::InvalidToken,
                 Err(_) => LexicalErrorType::IntegerOutOfRange,
@@ -63,6 +51,16 @@ impl LexicalError {
             && token.value[1..].chars().any(|c| c.is_ascii_digit())
         {
             LexicalErrorType::SignedNumberNotParenthesized
+        } else if token.value.len() > 14 {
+            LexicalErrorType::IdentifierTooLong
+        } else if token.value.contains("__") {
+            LexicalErrorType::ConsecutiveUnderscores
+        } else if token.value.ends_with('_') {
+            LexicalErrorType::TrailingUnderscore
+        } else if token.value.starts_with(|c: char| c.is_numeric()) {
+            LexicalErrorType::IdentifierStartsWithNumber
+        } else if token.value.chars().skip(1).any(|c| c.is_ascii_uppercase()) {
+            LexicalErrorType::InvalidIdentifier
         } else {
             LexicalErrorType::InvalidToken
         };
@@ -97,7 +95,6 @@ impl ErrorReporter for LexicalError {
 
         // Source context if available
         if let Some(source) = source_code {
-            // Split source code into lines and get the relevant line
             let lines: Vec<&str> = source.lines().collect();
             if self.line <= lines.len() {
                 let line: &str = lines[self.line - 1];

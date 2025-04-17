@@ -1,10 +1,16 @@
 MainPrgm empty;
 Var
 
-let X: Int;
+let x: Int = (1+1);
+let b: Int = (-1);
 
 BeginPg
 {
-    X[2] := 2;
+    x := 2 * (x + 1);
+    for x from 1 to 10 step 2 {
+        for x from 1 to 10 step 2 {
+            
+        }
+    }
 }
 EndPg;
