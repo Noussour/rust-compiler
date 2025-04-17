@@ -130,8 +130,15 @@ impl Compiler {
     fn print_quadruples(&self) {
         if let Some(quadruples) = &self.quadruples {
             println!("{}", "Generated Quadruples:".bold().underline());
+            // Print each quadruple with alternating background
             for (i, quad) in quadruples.quadruples.iter().enumerate() {
-                println!("{}: {}", i, quad);
+                let index_str = format!(" {:<4}", i);
+                let index = if i % 2 == 0 {
+                    index_str.blue()
+                } else {
+                    index_str.green()
+                };
+                println!("{}│ {}", index, quad);
             }
         }
     }
@@ -164,7 +171,7 @@ impl Compiler {
         println!("{}", "AST:".green());
         ast.pretty_print();
     }
-    
+
     fn print_symbol_table(&self, analyzer: &SemanticAnalyzer) {
         println!("\n{}", "Symbol Table:".bold().underline());
         let symbol_table = analyzer.get_symbol_table();
@@ -174,23 +181,23 @@ impl Compiler {
                 SymbolKind::Constant => "Constant".yellow(),
                 SymbolKind::Array(size) => format!("Array[{}]", size).magenta(),
             };
-    
+
             let value = match &symbol.value {
-                SymbolValue::Single(lit) => format!("{}", Self::format_literal(lit)).green().to_string(),
+                SymbolValue::Single(lit) => {
+                    format!("{}", Self::format_literal(lit)).green().to_string()
+                }
                 SymbolValue::Array(values) => {
                     if values.is_empty() {
                         "[]".dimmed().to_string()
                     } else {
-                        let elements: Vec<String> = values
-                            .iter()
-                            .map(|v| Self::format_literal(v))
-                            .collect();
+                        let elements: Vec<String> =
+                            values.iter().map(|v| Self::format_literal(v)).collect();
                         format!("[{}]", elements.join(", ")).green().to_string()
                     }
                 }
                 SymbolValue::Uninitialized => "<uninitialized>".dimmed().to_string(),
             };
-    
+
             println!(
                 "{} {} {} = {} (line {}, col {})",
                 kind,
@@ -202,7 +209,7 @@ impl Compiler {
             );
         }
     }
-    
+
     // Helper function to format literals more nicely
     fn format_literal(lit: &LiteralKind) -> String {
         match lit {
@@ -210,4 +217,5 @@ impl Compiler {
             LiteralKind::Float(f) => f.to_string(),
             LiteralKind::String(s) => format!("\"{}\"", s),
         }
-    }}
+    }
+}
