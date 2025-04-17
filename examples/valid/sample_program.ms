@@ -7,9 +7,9 @@ Var
   @define Const Max_temp: Float = (+100.0);
   @define Const Min_temp: Float = (-0.0);
   @define Const Default_temp: Float = 25.5;
-  let test_value1: Int = (+42);
+  let test_value1: Int = 327000;
   let test_array1: [Float; 3] = {(-4.34), (+23.23), 19.0};
-  let result: Float = 0;
+  let result: Float = 0.0;
   let result2: Float = 0.0;
 
   let i: Int;
@@ -29,7 +29,7 @@ BeginPg
   <!- TODO: Think about this case, ask prof and handle it if necessary -!>
   result := result2;
 
-  sum := (-32767);
+  sum := (-32767.0);
 
   <!- TODO: Ask if it is allowed to negate an expression -!>
   <!- sum := -i; -!>

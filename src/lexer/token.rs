@@ -7,7 +7,6 @@ use std::fmt;
 pub enum Token {
     #[regex(r"[ \t\f\r]+", logos::skip)]
     #[regex(r"\n", newline_callback)]
-
     // Language keywords
     #[token("MainPrgm")]
     MainPrgm,
@@ -130,7 +129,6 @@ pub enum Token {
     #[regex("\\{--([^-]|(-[^-]))*--\\}", logos::skip)]
     Comment,
 
-
     Error,
 }
 
@@ -146,20 +144,22 @@ impl fmt::Display for Token {
     }
 }
 
-
 fn parse_int_literal(lex: &mut logos::Lexer<Token>) -> Option<i32> {
     let s = lex.slice();
-    if s.starts_with('(') {
-        s[1..s.len()-1].parse().ok()
+    let parsed: Option<i32> = if s.starts_with('(') {
+        s[1..s.len() - 1].parse().ok()
     } else {
         s.parse().ok()
-    }
+    };
+
+    // Only accept values in i16 range
+    parsed.filter(|&val| (-32768..=32767).contains(&val))
 }
 
 fn parse_float_literal(lex: &mut logos::Lexer<Token>) -> Option<f32> {
     let s = lex.slice();
     if s.starts_with('(') {
-        s[1..s.len()-1].parse().ok()
+        s[1..s.len() - 1].parse().ok()
     } else {
         s.parse().ok()
     }
@@ -167,14 +167,14 @@ fn parse_float_literal(lex: &mut logos::Lexer<Token>) -> Option<f32> {
 
 fn parse_string_literal(lex: &mut logos::Lexer<Token>) -> Option<String> {
     let s = lex.slice();
-    Some(s[1..s.len()-1].to_string())
+    Some(s[1..s.len() - 1].to_string())
 }
 
 fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
     let s = lex.slice();
     // Check if identifier contains uppercase letters (after the first character)
     let has_uppercase_after_first = s.chars().skip(1).any(|c| c.is_ascii_uppercase());
-    
+
     if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") && !has_uppercase_after_first {
         Some(s.to_string())
     } else {
