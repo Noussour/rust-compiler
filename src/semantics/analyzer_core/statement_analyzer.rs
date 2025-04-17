@@ -96,8 +96,8 @@ impl SemanticAnalyzer {
 
         // Ensure the condition is boolean
         if let Some(cond_type) = condition_type {
-            if cond_type != Type::Bool {
-                self.type_mismatch_error(&condition.span, &Type::Bool, &cond_type.get_type(), context);
+            if cond_type != Type::Int {
+                self.type_mismatch_error(&condition.span, &Type::Int, &cond_type.get_type(), context);
             }
         }
     }

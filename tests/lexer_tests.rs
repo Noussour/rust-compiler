@@ -107,4 +107,28 @@ mod lexer_tests {
 
         assert!(tokens.iter().all(|t| t.is_ok()));
     }
+
+    #[test]
+    fn test_empty_input() {
+        let mut lexer = Token::lexer("");
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
+    fn test_only_comments() {
+        let mut lexer = Token::lexer("{-- comment --} <!- another -!>");
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
+    fn test_mixed_valid_and_invalid() {
+        let mut lexer = Token::lexer("valid1 invalid__id 12345");
+        assert_eq!(
+            lexer.next(),
+            Some(Ok(Token::Identifier("valid1".to_string())))
+        );
+        assert_eq!(lexer.next(), Some(Err(()))); // invalid__id
+        assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(12345))));
+        assert_eq!(lexer.next(), None);
+    }
 }

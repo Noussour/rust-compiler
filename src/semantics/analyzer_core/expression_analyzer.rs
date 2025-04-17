@@ -35,21 +35,16 @@ impl From<Type> for ValueType {
     }
 }
 
-
 impl SemanticAnalyzer {
     pub fn analyze_expression(&mut self, expr: &Expression) -> Option<ValueType> {
         match &expr.node {
             ExpressionKind::Identifier(name) => self.handle_identifier(name, &expr.span),
-            ExpressionKind::ArrayAccess(name, index_expression) => {
-                self.handle_array_access(name, index_expression, &expr.span)
-            }
+            ExpressionKind::ArrayAccess(name, index_expression) => 
+                self.handle_array_access(name, index_expression, &expr.span),
             ExpressionKind::Literal(value) => self.handle_literal(value),
-            ExpressionKind::BinaryOp(left_expression, operator, right_expression) => {
-                self.handle_binary_operation(left_expression, operator, right_expression)
-            }
-            ExpressionKind::UnaryOp(unary_operator, located) => {
-                self.handle_unary_operation(unary_operator, located, &expr.span)
-            }
+            ExpressionKind::BinaryOp(left_expression, operator, right_expression) => 
+                self.handle_binary_operation(left_expression, operator, right_expression),
+            ExpressionKind::UnaryOp(unary_operator, located) => self.handle_unary_operation(unary_operator, located, &expr.span)
         }
     }
 
@@ -119,6 +114,13 @@ impl SemanticAnalyzer {
                 }
 
                 Some(ValueType::new(symbol_type, None))
+            },
+            SymbolKind::Variable => {
+                self.non_array_indexing(
+                    &index_expression.span,
+                    name,
+                );
+                None
             }
             _ => None,
         }
@@ -126,13 +128,8 @@ impl SemanticAnalyzer {
 
     fn handle_literal(&mut self, literal: &Literal) -> Option<ValueType> {
         match literal.node {
-            LiteralKind::Int(value) => {
-                Some(ValueType::new(Type::Int, Some(value as f32)))
-            }
-            LiteralKind::Float(value) => {
-
-                Some(ValueType::new(Type::Float, Some(value)))
-            }
+            LiteralKind::Int(value) => Some(ValueType::new(Type::Int, Some(value as f32))),
+            LiteralKind::Float(value) => Some(ValueType::new(Type::Float, Some(value))),
             _ => None,
         }
     }
@@ -229,29 +226,60 @@ impl SemanticAnalyzer {
                     return None;
                 }
 
-                Some(ValueType::new(Type::Bool, None))
+                let result_value = match (left_type.value, right_type.value, operator) {
+                    (Some(l), Some(r), Operator::GreaterThan) => (l > r) as i32,
+                    (Some(l), Some(r), Operator::LessThan) => (l < r) as i32,
+                    (Some(l), Some(r), Operator::GreaterEqual) => (l >= r) as i32,
+                    (Some(l), Some(r), Operator::LessEqual) => (l <= r) as i32,
+                    (Some(l), Some(r), Operator::Equal) => (l == r) as i32,
+                    (Some(l), Some(r), Operator::NotEqual) => (l != r) as i32,
+                    _ => 0,
+                };
+
+                Some(ValueType::new(Type::Int, Some(result_value as f32)))
             }
             Operator::And | Operator::Or => {
-                if left_type.typ != Type::Bool {
+                if left_type.typ != Type::Int && left_type.typ != Type::Float {
                     self.type_mismatch_error(
                         &(left.span.start..right.span.end),
-                        &Type::Bool,
+                        &Type::Int,
                         &left_type.typ,
                         Some("logical"),
                     );
                     return None;
                 }
-                if right_type.typ != Type::Bool {
+                if right_type.typ != Type::Int && right_type.typ != Type::Float {
                     self.type_mismatch_error(
                         &(left.span.start..right.span.end),
-                        &Type::Bool,
+                        &Type::Int,
                         &right_type.typ,
                         Some("logical"),
                     );
-                    return None; 
+                    return None;
                 }
 
-                Some(ValueType::new(Type::Bool, None))
+                if let Some(left_value) = left_type.value {
+                    if left_value != 0.0 && left_value != 1.0 {
+                        self.condition_value_error(&left.span, left_value.to_string());
+                        return None;
+                    }
+                }
+
+                if let Some(right_value) = right_type.value {
+                    if right_value != 0.0 && right_value != 1.0 {
+                        self.condition_value_error(&right.span, right_value.to_string());
+                        return None;
+                    }
+                }
+
+                // Calculate the result (still as 0 or 1)
+                let result_value = match (left_type.value, right_type.value, operator) {
+                    (Some(l), Some(r), Operator::And) => ((l == 1.0) && (r == 1.0)) as i32,
+                    (Some(l), Some(r), Operator::Or) => ((l == 1.0) || (r == 1.0)) as i32,
+                    _ => 0,
+                };
+
+                Some(ValueType::new(Type::Int, Some(result_value as f32)))
             }
         }
     }
@@ -266,19 +294,28 @@ impl SemanticAnalyzer {
 
         match unary_operator {
             UnaryOperator::Not => {
-                if expression_type.typ != Type::Bool {
+                if expression_type.typ != Type::Int {
                     self.type_mismatch_error(
                         span,
-                        &Type::Bool,
+                        &Type::Int,
                         &expression_type.typ,
                         Some("logical"),
                     );
                     return None;
                 }
+                if expression_type.value != Some(0.0)
+                    && expression_type.value != Some(1.0)
+                {
+                    self.condition_value_error(span, expression_type.value.unwrap().to_string());
+                    return None;
+                }
 
-                Some(ValueType::new(Type::Bool, None))
+                let negated_value = match expression_type.value {
+                    Some(value) => if value == 0.0 { 1.0 } else { 0.0 },
+                    None => 0.0,
+                };
+                Some(ValueType::new(Type::Int, Some(negated_value)))
             }
         }
     }
 }
-

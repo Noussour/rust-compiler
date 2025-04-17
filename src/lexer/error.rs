@@ -1,20 +1,21 @@
-use crate::lexer::lexer_core::TokenWithMetaData;
-use std::fmt;
-use std::error::Error;
-use crate::error_reporter::format_code_context;
 use crate::error_reporter::ErrorReporter;
+use crate::error_reporter::format_code_context;
+use crate::lexer::lexer_core::TokenWithMetaData;
 use colored::Colorize;
+use std::error::Error;
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexicalErrorType {
     UnterminatedString,
     NonAsciiCharacters,
-    IdentifierTooLong ,
+    IdentifierTooLong,
     InvalidIdentifier,
     ConsecutiveUnderscores,
     TrailingUnderscore,
     IdentifierStartsWithNumber,
     IntegerOutOfRange,
+    SignedNumberNotParenthesized,
     InvalidToken,
 }
 
@@ -43,6 +44,25 @@ impl LexicalError {
             LexicalErrorType::IdentifierStartsWithNumber
         } else if token.value.chars().skip(1).any(|c| c.is_ascii_uppercase()) {
             LexicalErrorType::InvalidIdentifier
+        } else if token.value.chars().all(|c| c.is_ascii_digit()) {
+            // Check for integer out of range
+            match token.value.parse::<i32>() {
+                Ok(_) => LexicalErrorType::InvalidToken,
+                Err(_) => LexicalErrorType::IntegerOutOfRange,
+            }
+        } else if (token.value.starts_with('-') || token.value.starts_with('+'))
+            && !token.value.starts_with("(-")
+            && !token.value.starts_with("(+")
+            && (token.value[1..].chars().any(|c| c.is_ascii_digit()))
+        {
+            LexicalErrorType::SignedNumberNotParenthesized
+        } else if (token.value.starts_with('-') || token.value.starts_with('+'))
+            && !token.value.starts_with("(-")
+            && !token.value.starts_with("(+")
+            && token.value[1..].contains('.')
+            && token.value[1..].chars().any(|c| c.is_ascii_digit())
+        {
+            LexicalErrorType::SignedNumberNotParenthesized
         } else {
             LexicalErrorType::InvalidToken
         };
@@ -61,15 +81,19 @@ impl ErrorReporter for LexicalError {
         let mut result = String::new();
 
         // Error header with type and location
-        result.push_str(&format!("{}: {}\n", 
-            "Lexical Error".red().bold(), 
-            self.get_error_description()));
-        
+        result.push_str(&format!(
+            "{}: {}\n",
+            "Lexical Error".red().bold(),
+            self.get_error_description()
+        ));
+
         // File and position information
-        result.push_str(&format!("{} line {}, column {}\n", 
+        result.push_str(&format!(
+            "{} line {}, column {}\n",
             "-->".blue(),
             self.line,
-            self.column));
+            self.column
+        ));
 
         // Source context if available
         if let Some(source) = source_code {
@@ -78,17 +102,16 @@ impl ErrorReporter for LexicalError {
             if self.line <= lines.len() {
                 let line: &str = lines[self.line - 1];
                 result.push_str(&format_code_context(
-                    line, 
-                    self.column, 
-                    self.invalid_token.len()));
+                    line,
+                    self.column,
+                    self.invalid_token.len(),
+                ));
             }
         }
 
         // Add suggestion if available
         if let Some(suggestion) = self.get_suggestion() {
-            result.push_str(&format!("{}: {}\n", 
-                "Suggestion".cyan().bold(), 
-                suggestion));
+            result.push_str(&format!("{}: {}\n", "Suggestion".cyan().bold(), suggestion));
         }
 
         result
@@ -98,34 +121,42 @@ impl ErrorReporter for LexicalError {
         match &self.error_type {
             LexicalErrorType::UnterminatedString => {
                 Some(format!("Add a closing quote: {}\"", self.invalid_token))
-            },
+            }
             LexicalErrorType::NonAsciiCharacters => {
                 Some("Use only ASCII characters in identifiers and strings".to_string())
-            },
+            }
             LexicalErrorType::IdentifierTooLong => {
                 Some("Identifiers must be 14 characters or less".to_string())
-            },
+            }
             LexicalErrorType::ConsecutiveUnderscores => {
                 let fixed = self.invalid_token.replace("__", "_");
                 Some(format!("Use single underscores: '{}'", fixed))
-            },
+            }
             LexicalErrorType::TrailingUnderscore => {
                 let fixed = self.invalid_token.trim_end_matches('_');
                 Some(format!("Remove trailing underscore: '{}'", fixed))
-            },
+            }
             LexicalErrorType::IdentifierStartsWithNumber => {
-                let _first_non_digit = self.invalid_token
+                let _first_non_digit = self
+                    .invalid_token
                     .find(|c: char| !c.is_numeric())
                     .unwrap_or(0);
                 let fixed = format!("_{}", self.invalid_token);
-                Some(format!("Identifiers can't start with numbers. Try: '{}'", fixed))
-            },
-            LexicalErrorType::InvalidIdentifier => {
-                Some("Identifiers must not contain uppercase letters after the first character".to_string())
-            },
+                Some(format!(
+                    "Identifiers can't start with numbers. Try: '{}'",
+                    fixed
+                ))
+            }
+            LexicalErrorType::InvalidIdentifier => Some(
+                "Identifiers must not contain uppercase letters after the first character"
+                    .to_string(),
+            ),
             LexicalErrorType::IntegerOutOfRange => {
                 Some("Integer literals must be within the valid range".to_string())
-            },
+            }
+            LexicalErrorType::SignedNumberNotParenthesized => {
+                Some("Signed numbers must be parenthesized".to_string())
+            }
             LexicalErrorType::InvalidToken => {
                 Some("Check for unrecognized symbols or incorrect syntax".to_string())
             }
@@ -144,24 +175,38 @@ impl ErrorReporter for LexicalError {
 impl LexicalError {
     fn get_error_description(&self) -> String {
         match self.error_type {
-            LexicalErrorType::UnterminatedString => 
-                format!("Unterminated string '{}' - missing closing quote", self.invalid_token),
-            LexicalErrorType::NonAsciiCharacters => 
-                format!("Non-ASCII characters in '{}'", self.invalid_token),
-            LexicalErrorType::IdentifierTooLong => 
-                format!("Identifier '{}' exceeds maximum length of 14 characters", self.invalid_token),
-            LexicalErrorType::ConsecutiveUnderscores => 
-                format!("Consecutive underscores in identifier '{}'", self.invalid_token),
-            LexicalErrorType::TrailingUnderscore => 
-                format!("Identifier '{}' ends with underscore", self.invalid_token),
-            LexicalErrorType::InvalidIdentifier =>
-                format!("Invalid identifier '{}'", self.invalid_token),
-            LexicalErrorType::IdentifierStartsWithNumber => 
-                format!("Identifier '{}' starts with a number", self.invalid_token),
-            LexicalErrorType::IntegerOutOfRange => 
-                format!("Integer '{}' is out of range", self.invalid_token),
-            LexicalErrorType::InvalidToken => 
-                format!("Invalid token '{}'", self.invalid_token),
+            LexicalErrorType::UnterminatedString => format!(
+                "Unterminated string '{}' - missing closing quote",
+                self.invalid_token
+            ),
+            LexicalErrorType::NonAsciiCharacters => {
+                format!("Non-ASCII characters in '{}'", self.invalid_token)
+            }
+            LexicalErrorType::IdentifierTooLong => format!(
+                "Identifier '{}' exceeds maximum length of 14 characters",
+                self.invalid_token
+            ),
+            LexicalErrorType::ConsecutiveUnderscores => format!(
+                "Consecutive underscores in identifier '{}'",
+                self.invalid_token
+            ),
+            LexicalErrorType::TrailingUnderscore => {
+                format!("Identifier '{}' ends with underscore", self.invalid_token)
+            }
+            LexicalErrorType::InvalidIdentifier => {
+                format!("Invalid identifier '{}'", self.invalid_token)
+            }
+            LexicalErrorType::IdentifierStartsWithNumber => {
+                format!("Identifier '{}' starts with a number", self.invalid_token)
+            }
+            LexicalErrorType::IntegerOutOfRange => {
+                format!("Integer '{}' is out of range", self.invalid_token)
+            }
+            LexicalErrorType::SignedNumberNotParenthesized => format!(
+                "Signed number '{}' must be parenthesized",
+                self.invalid_token
+            ),
+            LexicalErrorType::InvalidToken => format!("Invalid token '{}'", self.invalid_token),
         }
     }
 }

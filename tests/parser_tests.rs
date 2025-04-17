@@ -537,4 +537,18 @@ mod parser_tests {
         let program = parse_test(&input);
         assert_eq!(program.name, "L3_software");
     }
+
+    #[test]
+    fn test_empty_program() {
+        let source = "";
+        let result = parse_source(source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unexpected_token() {
+        let source = "MainPrgm test ; Var let x : Int ; BeginPg { x := ; } EndPg ;";
+        let result = parse_source(source);
+        assert!(result.is_err());
+    }
 }

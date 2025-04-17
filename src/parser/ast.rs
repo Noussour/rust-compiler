@@ -38,7 +38,6 @@ pub type Declaration = Located<DeclarationKind>;
 pub enum Type {
     Int,
     Float,
-    Bool,
     String,
 }
 
@@ -56,7 +55,6 @@ impl Type {
             // Same types are always compatible
             (Type::Int, Type::Int) => true,
             (Type::Float, Type::Float) => true,
-            (Type::Bool, Type::Bool) => true,
             (Type::String, Type::String) => true,
             
             // Int can be converted to Float
@@ -73,7 +71,6 @@ impl std::fmt::Display for Type {
         match self {
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
-            Type::Bool => write!(f, "Bool"),
             Type::String => write!(f, "String"),
         }
     }

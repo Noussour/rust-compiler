@@ -12,7 +12,7 @@ mod semantic_tests {
         };
 
         // Create a semantic analyzer with empty source code info
-        let mut analyzer = SemanticAnalyzer::new_with_source_code(String::new());
+        let mut analyzer = SemanticAnalyzer::new(String::new());
 
         // Analyze the program
         analyzer.analyze(&program);
@@ -442,5 +442,33 @@ mod semantic_tests {
         let errors = analyze_test(source);
         assert!(!errors.is_empty(), "Expected errors, but found none");
         // This should cause a type error for the condition
+    }
+
+    #[test]
+    fn test_empty_source() {
+        let errors = analyze_test("");
+        assert!(!errors.is_empty());
+    }
+
+    #[test]
+    fn test_only_comments() {
+        let errors = analyze_test("{-- comment --} <!- another -!>");
+        assert!(!errors.is_empty());
+    }
+
+    #[test]
+    fn test_assign_to_undeclared_array_element() {
+        let source = r#"
+            MainPrgm test;
+            Var
+            let x: Int;
+            BeginPg
+            {
+                arr[0] := 1; <!- arr not declared -!>
+            }
+            EndPg;
+        "#;
+        let errors = analyze_test(source);
+        assert!(contains_error_of_type(&errors, "UndeclaredIdentifier"));
     }
 }

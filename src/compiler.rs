@@ -94,7 +94,7 @@ impl Compiler {
         println!("\n{}", "Semantic Analysis:".bold().underline());
 
         // Create analyzer with source code for span-to-line/column conversion
-        let mut analyzer = SemanticAnalyzer::new_with_source_code(self.source_code.clone());
+        let mut analyzer = SemanticAnalyzer::new(self.source_code.clone());
         analyzer.analyze(program);
 
         // Check for semantic errors

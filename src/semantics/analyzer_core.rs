@@ -19,7 +19,7 @@ pub struct SemanticAnalyzer {
 }
 
 impl SemanticAnalyzer {
-    pub fn new_with_source_code(source_code: String) -> Self {
+    pub fn new(source_code: String) -> Self {
         SemanticAnalyzer {
             symbol_table: SymbolTable::new(),
             errors: Vec::new(),
@@ -29,6 +29,9 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, program: &Program) {
+        if program.statements.is_empty() && program.declarations.is_empty() {
+            self.empty_program();
+        }
         // First pass: analyze declarations
         for decl in &program.declarations {
             self.analyze_declaration(decl);
@@ -41,6 +44,10 @@ impl SemanticAnalyzer {
     }
 
     // Error helper methods
+    fn empty_program(&mut self) {
+        self.add_error(SemanticError::EmptyProgram);
+    }
+
     fn type_mismatch_error(
         &mut self,
         span: &Range<usize>,
@@ -88,6 +95,13 @@ impl SemanticAnalyzer {
             column: self.source_map.get_column(span),
         });
     }
+    fn non_array_indexing(&mut self, span: &Range<usize>, name: &str) {
+        self.add_error(SemanticError::NonArrayIndexing {
+            var_name: name.to_string(),
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
 
     fn division_by_zero_error(&mut self, span: &Range<usize>) {
         self.add_error(SemanticError::DivisionByZero {
@@ -112,6 +126,17 @@ impl SemanticAnalyzer {
         });
     }
 
+    fn condition_value_error(
+        &mut self,
+        span: &Range<usize>,
+        found: String,
+    ) {
+        self.add_error(SemanticError::InvalidConditionValue {
+            found: found,
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
 
     pub fn add_error(&mut self, error: SemanticError) {
         // Only add the error if it hasn't been reported yet

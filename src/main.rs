@@ -1,23 +1,36 @@
 use colored::*;
 use rust_compiler::compiler::Compiler;
-use std::env;
+use clap::{Arg, Command};
 use std::process;
 
 fn main() {
-    // Get command line arguments
-    let args: Vec<String> = env::args().collect();
+    let matches = Command::new("rust-compiler")
+        .version("1.0")
+        .author("Your Name")
+        .about("Compiles MiniSoft programming language")
+        .arg(
+            Arg::new("file")
+                .help("Input file to compile")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .help("Enable verbose output")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .get_matches();
 
-    // Check if a file path was provided
-    if args.len() <= 1 {
-        eprintln!("{}: Usage: {} <file_path>", "Error".red().bold(), args[0]);
-        process::exit(1);
-    }
+    let file_path = matches.get_one::<String>("file").unwrap();
+    let verbose = matches.get_flag("verbose");
 
-    // Create a compiler instance with the provided file path
-    let file_path = &args[1];
     match Compiler::new(file_path) {
         Ok(mut compiler) => {
-            // Run the compiler and process the result
+            if verbose {
+                println!("{}", "Verbose mode enabled".yellow().bold());
+            }
             match compiler.run() {
                 Ok(_) => {
                     println!("{}", "✓ Compilation successful!".green().bold());
