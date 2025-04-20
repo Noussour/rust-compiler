@@ -216,7 +216,7 @@ mod semantic_tests {
         let errors = analyze_test(source);
         assert!(!errors.is_empty(), "Expected errors, but found none");
         assert!(
-            contains_error_of_type(&errors, "Cannot index non-array"),
+            contains_error_of_type(&errors, "NonArrayIndexing"),
             "Expected non-array indexing error, but found: {:?}",
             errors
         );
@@ -463,7 +463,6 @@ mod semantic_tests {
 
     #[test]
     fn test_only_comments() {
-
         let source = r#"
             MainPrgm test;
             Var
@@ -592,7 +591,7 @@ mod semantic_tests {
             let nbr : Int;
             let flottant : Float;
             let resultat : Int;
-            BeginPg { resultat := nbr AND flottant; } EndPg;
+            BeginPg { resultat := nbr + flottant; } EndPg;
         "#;
         let errors = analyze_test(source);
         assert!(!errors.is_empty());
