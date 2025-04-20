@@ -153,6 +153,20 @@ impl SemanticAnalyzer {
         });
     }
 
+    fn invalid_array_size_error(
+        &mut self,
+        span: &Range<usize>,
+        name: &str,
+        size: i32,
+    ) {
+        self.add_error(SemanticError::InvalidArraySize {
+            name: name.to_string(),
+            size,
+            line: self.source_map.get_line(span),
+            column: self.source_map.get_column(span),
+        });
+    }
+
     pub fn add_error(&mut self, error: SemanticError) {
         // Only add the error if it hasn't been reported yet
         let error_key = format!("{:?}", error);

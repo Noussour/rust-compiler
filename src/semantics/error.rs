@@ -65,6 +65,12 @@ pub enum SemanticError {
         line: usize,
         column: usize,
     },
+    InvalidArraySize {
+        name: String,
+        size: i32,
+        line: usize,
+        column: usize,
+    },
     EmptyProgram,
 }
 
@@ -184,6 +190,9 @@ impl ErrorReporter for SemanticError {
             SemanticError::InvalidConditionValue { found, .. } => {
                 Some(format!("Condition must return 1 or 0, found '{}'", found))
             }
+            SemanticError::InvalidArraySize { name, .. } => {
+                Some(format!("Declare array '{}' with a positive size", name))
+            }
             SemanticError::EmptyProgram => Some("Program is empty. Add some code.".to_string()),
         }
     }
@@ -203,6 +212,7 @@ impl ErrorReporter for SemanticError {
             SemanticError::ArrayIndexOutOfBounds { line, column, .. } => (*line, *column),
             SemanticError::InvalidConditionValue { line, column, .. } => (*line, *column),
             SemanticError::NonArrayIndexing { line, column, .. } => (*line, *column),
+            SemanticError::InvalidArraySize { line, column, .. } => (*line, *column),
             SemanticError::EmptyProgram => (0, 0),
         } 
     }
@@ -267,6 +277,12 @@ impl SemanticError {
             SemanticError::NonArrayIndexing { var_name, .. } => {
                 format!("Attempt to index non-array variable '{}'", var_name)
             }
+            SemanticError::InvalidArraySize { name, size, .. } => {
+                format!(
+                    "Invalid array size: {} for array '{}'. Array size must be positive",
+                    size, name
+                )
+            }
             SemanticError::EmptyProgram => "Program is empty. Add some code.".to_string(),
         }
     }
@@ -282,6 +298,7 @@ impl SemanticError {
             SemanticError::ArrayIndexOutOfBounds { name, .. } => name.len(),
             SemanticError::InvalidConditionValue { found, .. } => found.len(),
             SemanticError::NonArrayIndexing { var_name, .. } => var_name.len(),
+            SemanticError::InvalidArraySize { name, .. } => name.len(),
             SemanticError::EmptyProgram => 0, 
         }
     }
