@@ -29,7 +29,7 @@ impl Compiler {
 
     pub fn run(&mut self) -> Result<(), i32> {
         println!("Compiling file: {}", self.file_path);
-        self.print_source_code();
+        // self.print_source_code();
 
         // Step 1: Lexical Analysis
         let tokens = self.lexical_analysis()?;
@@ -88,10 +88,7 @@ impl Compiler {
         }
     }
 
-    fn semantic_analysis(
-        &mut self,
-        program: &crate::parser::ast::Program,
-    ) -> Result<(), i32> {
+    fn semantic_analysis(&mut self, program: &crate::parser::ast::Program) -> Result<(), i32> {
         println!("\n{}", "Semantic Analysis:".bold().underline());
 
         // Create analyzer with source code for span-to-line/column conversion
@@ -118,7 +115,6 @@ impl Compiler {
 
         // Store the generated quadruples
         self.quadruples = code_generator.generate_code(program);
-
 
         // Print the generated quadruples
         self.print_quadruples();
@@ -183,15 +179,17 @@ impl Compiler {
             };
 
             let value = match &symbol.value {
-                SymbolValue::Single(lit) => {
-                    format!("{}", LiteralKind::format_literal(lit)).green().to_string()
-                }
+                SymbolValue::Single(lit) => format!("{}", LiteralKind::format_literal(lit))
+                    .green()
+                    .to_string(),
                 SymbolValue::Array(values) => {
                     if values.is_empty() {
                         "[]".dimmed().to_string()
                     } else {
-                        let elements: Vec<String> =
-                            values.iter().map(|v| LiteralKind::format_literal(v)).collect();
+                        let elements: Vec<String> = values
+                            .iter()
+                            .map(|v| LiteralKind::format_literal(v))
+                            .collect();
                         format!("[{}]", elements.join(", ")).green().to_string()
                     }
                 }
@@ -209,5 +207,4 @@ impl Compiler {
             );
         }
     }
-
 }

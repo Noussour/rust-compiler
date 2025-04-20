@@ -218,15 +218,25 @@ Expression: Located<ExpressionKind> = {
 };
 
 LogicalExpr: Located<ExpressionKind> = {
-    <l:@L> <lhs:LogicalExpr> "OR" <rhs:ComparisonExpr> <r:@R> => {
+    <l:@L> <lhs:LogicalExpr> "OR" <rhs:UnaryExpr> <r:@R> => {
         Located {
             node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Or, Box::new(rhs)),
             span: l..r,
         }
     },
-    <l:@L> <lhs:LogicalExpr> "AND" <rhs:ComparisonExpr> <r:@R> => {
+    <l:@L> <lhs:LogicalExpr> "AND" <rhs:UnaryExpr> <r:@R> => {
         Located {
             node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::And, Box::new(rhs)),
+            span: l..r,
+        }
+    },
+    UnaryExpr,
+};
+
+UnaryExpr: Located<ExpressionKind> = {
+    <l:@L> "!" <expr:ComparisonExpr> <r:@R> => {
+        Located {
+            node: ExpressionKind::UnaryOp(UnaryOperator::Not, Box::new(expr)),
             span: l..r,
         }
     },
@@ -290,25 +300,15 @@ AdditiveExpr: Located<ExpressionKind> = {
 };
 
 MultiplicativeExpr: Located<ExpressionKind> = {
-    <l:@L> <lhs:MultiplicativeExpr> "*" <rhs:UnaryExpr> <r:@R> => {
+    <l:@L> <lhs:MultiplicativeExpr> "*" <rhs:PrimaryExpr> <r:@R> => {
         Located {
             node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Multiply, Box::new(rhs)),
             span: l..r,
         }
     },
-    <l:@L> <lhs:MultiplicativeExpr> "/" <rhs:UnaryExpr> <r:@R> => {
+    <l:@L> <lhs:MultiplicativeExpr> "/" <rhs:PrimaryExpr> <r:@R> => {
         Located {
             node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Divide, Box::new(rhs)),
-            span: l..r,
-        }
-    },
-    UnaryExpr,
-};
-
-UnaryExpr: Located<ExpressionKind> = {
-    <l:@L> "!" <expr:PrimaryExpr> <r:@R> => {
-        Located {
-            node: ExpressionKind::UnaryOp(UnaryOperator::Not, Box::new(expr)),
             span: l..r,
         }
     },
