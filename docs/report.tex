@@ -698,107 +698,28 @@ A detailed example of the output is provided in the error handling section
 \subsection{Intermediate Representation}
 The MiniSoft compiler uses quadruples as an intermediate representation that bridges the gap between the AST and machine-level instructions:
 
-\begin{lstlisting}[caption={Quadruple Structure}]
-#[derive(Debug, Clone, PartialEq)]
-pub enum Operation {
-    // Arithmetic operations
-    Add, Subtract, Multiply, Divide,
-    
-    // Assignment and memory operations
-    Assign, ArrayStore, ArrayLoad,
-    
-    // Control flow operations
-    Label(usize), Jump(usize), JumpIfTrue(usize), JumpIfFalse(usize),
-    
-    // Comparison and logical operations
-    Equal, NotEqual, LessThan, And, Or, Not,
-    
-    // I/O operations
-    Input, Output,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Operand {
-    IntLiteral(i32),
-    FloatLiteral(f32),
-    StringLiteral(String),
-    Variable(String),
-    TempVariable(String),
-    ArrayElement(String, Box<Operand>),
-    Empty,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Quadruple {
-    pub operation: Operation,
-    pub operand1: Operand,
-    pub operand2: Operand,
-    pub result: Operand,
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/codegen/quadruplet-structure.png}
+	\caption{Quadruple Structure}
+\end{figure}
 
 \subsection{Code Generation Strategy}
 The MiniSoft compiler generates code through recursive traversal of the AST:
 
-\begin{lstlisting}[caption={Expression Code Generation}]
-fn generate_expression(&mut self, expr: &Expression) -> Operand {
-    match &expr.node {
-        // For simple identifiers, just return a reference
-        ExpressionKind::Identifier(name) => Operand::Variable(name.clone()),
-        
-        // For binary operations, process both operands
-        ExpressionKind::BinaryOp(left, op, right) => {
-            let left_result = self.generate_expression(left);
-            let right_result = self.generate_expression(right);
-            let result = self.program.new_temp();
-
-            // Map AST operator to quadruple operation
-            let operation = match op {
-                Operator::Add => Operation::Add,
-                Operator::Subtract => Operation::Subtract,
-                // Other operators...
-            };
-
-            self.program.add(Quadruple {
-                operation,
-                operand1: left_result,
-                operand2: right_result,
-                result: result.clone(),
-            });
-
-            result
-        },
-        
-        // Other expression types...
-    }
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/codegen/expression-code-generation.png}
+	\caption{Expression Code Generation}
+\end{figure}
 
 For control structures like if-statements, the code generator creates labels and jumps:
 
-\begin{lstlisting}[caption={If-Statement Code Generation}]
-// Example of if-then-else statement
-match &statement.node {
-    StatementKind::IfThenElse(condition, then_block, else_block) => {
-        let else_label = self.program.new_label();
-        let end_label = self.program.new_label();
-        
-        // Evaluate condition
-        let cond_result = self.generate_expression(condition);
-        
-        // Jump to else if condition is false
-        self.program.add(Quadruple {
-            operation: Operation::JumpIfFalse(else_label),
-            operand1: cond_result,
-            operand2: Operand::Empty,
-            result: Operand::Empty,
-        });
-        
-        // Generate code for then block
-        // ...
-    }
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/codegen/if-statement-code-generation.png}
+	\caption{If-Statement Code Generation}
+\end{figure}
 
 \subsection{Example of Generated Code}
 For a simple MiniSoft program with a loop:
@@ -854,61 +775,38 @@ The MiniSoft compiler implements comprehensive error detection across all compil
 \subsection{Error Reporting Framework}
 The compiler uses a unified error reporting framework based on the \texttt{ErrorReporter} trait:
 
-\begin{lstlisting}[caption={Error Reporter Interface}]
-pub trait ErrorReporter {
-    fn report(&self, source_code: Option<&str>) -> String;
-    fn get_suggestion(&self) -> Option<String>;
-    fn get_error_name(&self) -> String;
-    fn get_location_info(&self) -> (usize, usize);
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/errors/error-reporter-trait.png}
+	\caption{Error Reporter Trait}
+\end{figure}
 
 This ensures consistent error presentation across all compiler phases.
 
 \subsection{Source Code Context}
 Error messages include source code context with visual indicators:
 
-\begin{lstlisting}[caption={Error with Source Context}]
-Syntax Error: Unexpected token '}'
---> line 15, column 3
-  |
-15 | if (x > 10) then {
-  |   output("Value too large");
-  | }
-  |   ^
-Expected one of: ';'
-Suggestion: Missing semicolon at the end of statement before this closing brace
-\end{lstlisting}
-
 \subsection{Example Error Scenarios}
 The compiler detects various error types:
 
-\begin{lstlisting}[caption={Lexical Error Example}]
-Lexical Error: Identifier 'veryLongIdentifier' exceeds maximum length of 14 characters
---> line 3, column 7
-  |
-3 |   let veryLongIdentifier: Int;
-  |       ^^^^^^^^^^^^^^^^^^
-Suggestion: Identifiers must be 14 characters or less
-\end{lstlisting}
 
-\begin{lstlisting}[caption={Semantic Error Example}]
-Semantic Error: Type mismatch in assignment: expected Int, found String
---> line 7, column 3
-  |
-7 |   x := message;
-  |   ^
-Suggestion: Cannot assign a String value to an Int variable.
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/errors/lexical-error-example.png}
+	\caption{Lexical Error Example}
+\end{figure}
 
-\begin{lstlisting}[caption={Compile-Time Error Example}]
-Semantic Error: Division by zero detected in constant expression
---> line 7, column 14
-  |
-7 |   result := 10 / DIVISOR;
-  |              ^^^^^^^^^
-Suggestion: Check the divisor value to ensure it is not zero
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/errors/syntax-error-example.png}
+	\caption{Syntax Error Example}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/errors/semantic-error-example.png}
+	\caption{Semantic Error Example}
+\end{figure}
 
 \section{Testing and Validation}
 \subsection{Test Methodology}
@@ -937,7 +835,7 @@ BeginPg
     result := result * i;
   }
   
-  output(result);  // Outputs: 120
+  output(result);  <!- Outputs: 120 !->
 }
 EndPg;
 \end{lstlisting}
