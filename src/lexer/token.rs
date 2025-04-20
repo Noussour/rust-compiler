@@ -111,6 +111,10 @@ pub enum Token {
     #[token("!")]
     Not,
 
+    // Identifiers
+    #[regex("[a-zA-Z][a-zA-Z0-9_]*", parse_identifier)]
+    Identifier(String),
+
     // Literals
     #[regex("(\\([+-][0-9]+\\))|([0-9]+)", parse_int_literal)]
     IntLiteral(i32),
@@ -120,9 +124,6 @@ pub enum Token {
 
     #[regex("\"[^\"]*\"", parse_string_literal)]
     StringLiteral(String),
-
-    #[regex("[a-zA-Z][a-zA-Z0-9_]*", parse_identifier)]
-    Identifier(String),
 
     // Ignored tokens
     #[regex("<\\!-([^-\n]|(-[^!\n]))*-\\!>", logos::skip)]
