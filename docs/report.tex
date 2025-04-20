@@ -814,6 +814,32 @@ The MiniSoft compiler was tested using a comprehensive suite of test cases desig
 \subsection{Test Cases}
 The test suite includes unit tests for individual components and integration tests for the complete compilation pipeline:
 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/tests/lexer_tests.png}
+	\caption{Lexer Tests}
+\end{figure}
+
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/tests/parser_tests.png}
+	\caption{Parser Tests}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/tests/semantic_tests.png}
+	\caption{Semantic Tests}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/tests/integration_tests.png}
+	\caption{Integration Tests}
+\end{figure}
+
+\newpage
 \section{Results and Evaluation}
 \subsection{Functionality Assessment}
 The MiniSoft compiler successfully implements all required language features and compilation phases. It correctly handles a wide range of program constructs while providing meaningful error messages for invalid code.
@@ -825,20 +851,46 @@ Here is a complete compilation example of a factorial program:
 MainPrgm Factorial;
 Var
   let n: Int;
-  let result: Int;
+  let result: Float = 4.2;
+  let i: Int = (-10);
 BeginPg
 {
   n := 5;
-  result := 1;
+  result := 1.0;
   
   for i from 1 to n step 1 {
     result := result * i;
   }
   
-  output(result);  <!- Outputs: 120 !->
+  output(result);  <!- Outputs: 120 -!>
 }
 EndPg;
 \end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/example/lexical-analysis.png}
+	\caption{Lexical Analysis (Tokens)}
+\end{figure}
+
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/example/syntaxical-analysis.png}
+	\caption{Syntaxical Analysis (AST)}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/example/semantic-analysis.png}
+	\caption{Semantic Analysis (Symbol Table)}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/example/code-generation.png}
+	\caption{Code Generation (Quadruplets)}
+\end{figure}
 
 \section{Conclusion}
 \subsection{Achievements}
@@ -851,27 +903,6 @@ The MiniSoft compiler successfully implements a complete compilation pipeline th
 	\item An intermediate code generator using quadruples
 	\item A detailed error reporting system
 \end{itemize}
-
-\subsection{Challenges}
-Challenges encountered during implementation included:
-\begin{itemize}
-	\item Designing an error recovery strategy that balances robustness with usability
-	\item Implementing proper type checking for a statically typed language
-	\item Handling complex control flow structures in code generation
-	\item Creating clear, actionable error messages
-\end{itemize}
-
-\subsection{Future Improvements}
-Potential future enhancements include:
-\begin{itemize}
-	\item Add executable generation (binary/bytecode output)
-	\item Additional optimization passes
-	\item Support for functions and procedures
-	\item Enhanced type system with type conversion
-	\item Improved warning system for potential issues
-	\item IDE integration for interactive development
-\end{itemize}
-
 
 \begin{thebibliography}{9}
 	\bibitem{rust} The Rust Programming Language: \url{https://www.rust-lang.org/}
