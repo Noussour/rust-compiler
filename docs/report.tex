@@ -478,26 +478,12 @@ Semantic analysis ensures that the program follows logical rules beyond syntax. 
 \subsection{Symbol Table Management}
 The symbol table tracks program identifiers and their attributes:
 
-\begin{lstlisting}[caption={Symbol Table Structure}]
-#[derive(Debug, Clone, PartialEq)]
-pub enum SymbolKind {
-    Variable,
-    Constant,
-    Array(usize),
-}
 
-#[derive(Debug, Clone)]
-pub struct Symbol {
-    pub name: String,           // Identifier name
-    pub kind: SymbolKind,       // Variable, constant, or array
-    pub symbol_type: Type,      // Data type (Int, Float, etc.)
-    pub value: SymbolValue,     // Current value (if known at compile time)
-    pub is_constant: bool,      // Whether the symbol can be modified
-    pub line: usize,            // Declaration line number
-    pub column: usize,          // Declaration column number
-}
-\end{lstlisting}
-
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/semantic/symbol-table-structure.png}
+	\caption{Symbol Table Structure}
+\end{figure}
 
 \subsection{Semantic Analyzer Modules}
 
@@ -525,6 +511,7 @@ The semantic analyzer delegates specific tasks to three specialized modules:
 	\item Duplicate declarations
 	\item Type mismatches
 	\item Array size mismatches
+	\item Invalid Array Size
 \end{itemize}
 
 \subsubsection{Statement Analyzer}
@@ -588,28 +575,12 @@ The modular design ensures organized, maintainable analysis with clear separatio
 \subsection{Type System Implementation}
 MiniSoft features a static type system enforcing type compatibility at compile time:
 
-\begin{lstlisting}[caption={Type System}]
-#[derive(Debug, Clone, PartialEq)]
-pub enum Type {
-    Int,
-    Float,
-    String,
-}
 
-impl Type {
-    pub fn is_compatible_with(&self, target: &Type) -> bool {
-        match (self, target) {
-            // Same types are always compatible
-            (Type::Int, Type::Int) => true,
-            (Type::Float, Type::Float) => true,
-            (Type::String, Type::String) => true,
-            
-            // All other combinations are incompatible
-            _ => false,
-        }
-    }
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/semantic/type-compatibility-system.png}
+	\caption{Type Compatibility System}
+\end{figure}
 
 \subsection{Expression Evaluation}
 The \texttt{expression\_analyzer} module evaluates and analyzes expressions during semantic analysis, ensuring semantic validity, type rule adherence, and performing constant folding where possible.
@@ -714,30 +685,14 @@ Evaluates constant expressions at compile time:
 
 \subsection{Error Detection and Reporting}
 The semantic analyzer performs comprehensive validation, detecting and collecting all semantic errors (type mismatches, undefined variables, scope violations, etc.) before reporting them collectively to allow for batch fixes.
-\begin{lstlisting}[caption={Semantic Error Types}]
-#[derive(Debug)]
-pub enum SemanticError {
-    ArraySizeMismatch { name: String, expected: usize, actual: usize },
-    UndeclaredIdentifier { name: String },
-    DuplicateDeclaration { name: String, original_line: usize },
-    TypeMismatch { expected: String, found: String, context: Option<String> },
-    DivisionByZero { },
-    ConstantModification { name: String },
-    ArrayIndexOutOfBounds { name: String, index: usize, size: usize },
-    // Other error types...
-}
-\end{lstlisting}
 
-Example of error output:
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\textwidth]{images/semantic/semantic-error-types.png}
+	\caption{Semantic Error Types}
+\end{figure}
 
-\begin{lstlisting}[caption={Semantic Error Output}]
-Semantic Error: Type mismatch in assignment: expected Int, found Float
---> line 12, column 3
-  |
-12 |   result := average;
-  |   ^^^^^^
-Suggestion: Make sure the types match. Try converting from 'Float' to 'Int'
-\end{lstlisting}
+A detailed example of the output is provided in the error handling section
 
 \section{Code Generation}
 \subsection{Intermediate Representation}
