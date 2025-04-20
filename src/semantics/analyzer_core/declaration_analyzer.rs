@@ -110,6 +110,12 @@ impl SemanticAnalyzer {
     }
 
     fn handle_array_declaration(&mut self, name: &str, typ: &Type, size: usize, span: &Range<usize>) {
+        // Check for valid array size
+        if size == 0 || (size as i32) < 0 {
+            self.invalid_array_size_error(span, name, size as i32);
+            return;
+        }
+        
         // Check for duplicate declaration
         if self.symbol_table.contains(name) {
             let existing = self.symbol_table.get(name).unwrap();
@@ -186,6 +192,12 @@ impl SemanticAnalyzer {
         exprs: &[Expression],
         span: &Range<usize>,
     ) {
+        // Check for valid array size
+        if size == 0 || (size as i32) < 0 {
+            self.invalid_array_size_error(span, name, size as i32);
+            return;
+        }
+        
         // Check that array size matches number of initializers
         if exprs.len() != size {
             self.array_size_mismatch_error(span, name, size, exprs.len());

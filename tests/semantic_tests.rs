@@ -504,7 +504,7 @@ mod semantic_tests {
         "#;
         let errors = analyze_test(source);
         assert!(!errors.is_empty());
-        assert!(contains_error_of_type(&errors, "ArraySizeInvalid"));
+        assert!(contains_error_of_type(&errors, "InvalidArraySize"));
     }
 
     #[test]
