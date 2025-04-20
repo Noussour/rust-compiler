@@ -17,12 +17,12 @@ pub struct SemanticAnalyzer {
 }
 
 impl SemanticAnalyzer {
-    pub fn new(source_code: String) -> Self {
+    pub fn new(source_code: &String) -> Self {
         SemanticAnalyzer {
             symbol_table: SymbolTable::new(),
             errors: Vec::new(),
             reported_errors: HashSet::new(),
-            source_map: SourceMap::new(source_code),
+            source_map: SourceMap::new(&source_code),
         }
     }
 

@@ -32,21 +32,21 @@ impl Compiler {
         self.print_source_code();
 
         // Step 1: Lexical Analysis
-        let tokens = self.perform_lexical_analysis()?;
+        let tokens = self.lexical_analysis()?;
 
         // Step 2: Syntax Analysis
-        let ast = self.perform_syntax_analysis(tokens)?;
+        let ast = self.syntax_analysis(tokens)?;
 
         // Step 3: Semantic Analysis
-        self.perform_semantic_analysis(&ast)?;
+        self.semantic_analysis(&ast)?;
 
         // Step 4: Code Generation
-        self.perform_code_generation(&ast)?;
+        self.code_generation(&ast)?;
 
         Ok(())
     }
 
-    fn perform_lexical_analysis(&mut self) -> Result<Vec<TokenWithMetaData>, i32> {
+    fn lexical_analysis(&mut self) -> Result<Vec<TokenWithMetaData>, i32> {
         println!("{}: ", "Lexical Analysis".bold().underline());
         // Tokenize the source code and capture lexical errors
         let (valid_tokens, errors) = tokenize(&self.source_code);
@@ -66,7 +66,7 @@ impl Compiler {
         Ok(valid_tokens)
     }
 
-    fn perform_syntax_analysis(
+    fn syntax_analysis(
         &mut self,
         tokens: Vec<TokenWithMetaData>,
     ) -> Result<crate::parser::ast::Program, i32> {
@@ -88,14 +88,14 @@ impl Compiler {
         }
     }
 
-    fn perform_semantic_analysis(
+    fn semantic_analysis(
         &mut self,
         program: &crate::parser::ast::Program,
     ) -> Result<(), i32> {
         println!("\n{}", "Semantic Analysis:".bold().underline());
 
         // Create analyzer with source code for span-to-line/column conversion
-        let mut analyzer = SemanticAnalyzer::new(self.source_code.clone());
+        let mut analyzer = SemanticAnalyzer::new(&self.source_code);
         analyzer.analyze(program);
 
         // Check for semantic errors
@@ -111,14 +111,14 @@ impl Compiler {
         }
     }
 
-    fn perform_code_generation(&mut self, program: &Program) -> Result<(), i32> {
+    fn code_generation(&mut self, program: &Program) -> Result<(), i32> {
         println!("\n{}", "Code Generation:".bold().underline());
 
         let mut code_generator = CodeGenerator::new();
-        let quadruple_program = code_generator.generate_code(program);
 
         // Store the generated quadruples
-        self.quadruples = Some(quadruple_program.clone());
+        self.quadruples = code_generator.generate_code(program);
+
 
         // Print the generated quadruples
         self.print_quadruples();
@@ -184,14 +184,14 @@ impl Compiler {
 
             let value = match &symbol.value {
                 SymbolValue::Single(lit) => {
-                    format!("{}", Self::format_literal(lit)).green().to_string()
+                    format!("{}", LiteralKind::format_literal(lit)).green().to_string()
                 }
                 SymbolValue::Array(values) => {
                     if values.is_empty() {
                         "[]".dimmed().to_string()
                     } else {
                         let elements: Vec<String> =
-                            values.iter().map(|v| Self::format_literal(v)).collect();
+                            values.iter().map(|v| LiteralKind::format_literal(v)).collect();
                         format!("[{}]", elements.join(", ")).green().to_string()
                     }
                 }
@@ -210,12 +210,4 @@ impl Compiler {
         }
     }
 
-    // Helper function to format literals more nicely
-    fn format_literal(lit: &LiteralKind) -> String {
-        match lit {
-            LiteralKind::Int(i) => i.to_string(),
-            LiteralKind::Float(f) => f.to_string(),
-            LiteralKind::String(s) => format!("\"{}\"", s),
-        }
-    }
 }

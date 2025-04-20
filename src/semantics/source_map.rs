@@ -5,7 +5,7 @@ pub struct SourceMap {
 }
 
 impl SourceMap {
-    pub fn new(source: String) -> Self {
+    pub fn new(source: &String) -> Self {
         let line_starts = Self::compute_line_starts(&source);
         Self { line_starts }
     }
