@@ -1,4 +1,6 @@
 \documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 
 % Basic packages
 \usepackage[utf8]{inputenc}
@@ -9,6 +11,7 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{tabularx}
+\usepackage{amsmath}
 
 % Simple code listing setup
 \lstset{
@@ -35,15 +38,15 @@
 
 \section{Introduction}
 \subsection{Project Overview}
-This project involves the development of a compiler for the MiniSoft programming language, implemented using the Rust programming language. A compiler is a specialized software tool that translates human-readable source code into machine-executable instructions. The MiniSoft compiler represents a complete implementation that handles all phases of the compilation process, from initial code analysis to the generation of executable code.
+This project involves the development of a compiler for the MiniSoft programming language, implemented using the Rust programming language. A compiler is a specialized software tool that translates human-readable source code into machine-executable instructions. The MiniSoft compiler represents an implementation that handles four phases of the compilation process, from initial code analysis to the generation quadruples.
 
-The primary goal of this project is to create a fully functional compiler that correctly implements the MiniSoft language specification while demonstrating modern compiler design principles. This includes robust error handling, efficient code generation, and a modular architecture that separates the compilation process into distinct phases.
+The primary goal of this project is to create a fully functional compiler that correctly implements the MiniSoft language specification while demonstrating modern compiler design principles. This includes robust error handling, and a modular architecture that separates the compilation process into distinct phases.
 
 \subsection{MiniSoft Language Features}
 MiniSoft is a compact programming language designed for educational purposes, combining simplicity with a range of essential programming features:
 
 \begin{itemize}
-	\item \textbf{Variables and Data Types}: MiniSoft supports three primary data types: integers (whole numbers), floating-point numbers (decimals), and strings (text).
+	\item \textbf{Variables and Data Types}: MiniSoft supports three primary data types: integers (from -32768 to 32767), floating-point numbers (decimals).
 
 	\item \textbf{Arrays}: The language supports single-dimensional arrays for each basic data type.
 
@@ -58,17 +61,17 @@ MiniSoft is a compact programming language designed for educational purposes, co
 	\item \textbf{Type System}: MiniSoft employs a static type system, with variable types determined at compile time.
 \end{itemize}
 
-Each MiniSoft program consists of a main program block with optional variable declarations followed by executable statements, making it accessible to beginning programmers.
+Each MiniSoft program consists of a main program block with variable declarations followed by executable statements.
 
 \subsection{Tools and Technologies}
 The MiniSoft compiler is built using modern tools that enable efficient implementation:
 
 \begin{itemize}
 	\item \textbf{Rust Programming Language}: Chosen for its memory safety, performance, and pattern matching capabilities.
-
-	\item \textbf{LALRPOP}: A parser generator for Rust that allows expressing grammar rules in a declarative form.
-
+    
 	\item \textbf{Logos}: A high-performance lexer generator for Rust with attribute-based syntax for defining tokens.
+    
+	\item \textbf{LALRPOP}: A parser generator for Rust that allows expressing grammar rules in a declarative forma parser generator for Rust that uses the LR(1) parsing algorithm, enabling developers to define grammar rules declaratively.
 
 	\item \textbf{Cranelift}: A code generator framework used to produce optimized machine code.
 \end{itemize}
@@ -89,13 +92,9 @@ The MiniSoft compiler follows the classical compiler pipeline architecture, divi
 
 	\item \textbf{Syntax Analysis (Parsing)}: Analyzes the sequence of tokens to determine if they follow the MiniSoft grammar rules, building an Abstract Syntax Tree (AST).
 
-	\item \textbf{Semantic Analysis}: Checks whether the program makes logical sense, including type checking, scope validation, and constant analysis.
+	\item \textbf{Semantic Analysis}: Checks whether the program makes logical sense, including type checking, scope validation, and constant analysisvalidates program logic through declaration, statement, and expression analysis, covering type checking, scope rules, and constant evaluation..
 
 	\item \textbf{Intermediate Code Generation}: Translates the AST into an intermediate representation using quadruples.
-
-	\item \textbf{Code Optimization}: Improves the efficiency of the intermediate code through various techniques.
-
-	\item \textbf{Code Generation}: Transforms the optimized intermediate representation into target machine code or assembly language.
 \end{enumerate}
 
 \subsection{Architecture Overview}
@@ -140,18 +139,26 @@ These decisions reflect a balance between educational value, implementation prac
 \subsection{Overview of Lexical Analysis}
 Lexical analysis, the first phase of compilation, transforms source code into tokens—the smallest meaningful units of a programming language. In the MiniSoft compiler, this phase is implemented using Logos, which combines declarative syntax with efficient processing.
 
-The lexical analyzer (lexer) scans the input character by character, recognizing patterns to identify tokens while filtering out non-essential elements like whitespace and comments.
+The lexical analyzer (lexer) scans the input character by character, following two core rules:
+
+\begin{itemize}
+    \item \textbf{Longest Match Rule}: Prioritizes the longest possible valid token (e.g., \texttt{>=} over \texttt{>}).
+    
+    \item \textbf{Priority Rule}: Resolves ambiguities by matching the first declared pattern (e.g., keywords before identifiers).
+\end{itemize}
+
+The lexer recognizes token patterns while filtering out non-essential elements like whitespace and comments.
 
 \subsection{Token Design}
 The MiniSoft language employs a comprehensive token classification system:
 
 \begin{itemize}
-	\item \textbf{Keywords}: Reserved words like \texttt{if}, \texttt{while}, \texttt{let}
-	\item \textbf{Control flow structures}: Tokens like \texttt{if}, \texttt{then}, \texttt{else}, \texttt{while}
-	\item \textbf{Declarations}: Tokens like \texttt{Var}, \texttt{Const}
-	\item \textbf{Program structure}: Tokens like \texttt{MainPrgm}, \texttt{BeginPg}, \texttt{EndPg}
-	\item \textbf{Operators}: Arithmetic, comparison, and logical operators
-	\item \textbf{Punctuation}: Symbols like \texttt{;}, \texttt{,}, \texttt{(}
+	\item \textbf{Keywords}: Reserved words \texttt{MainPrgm}, \texttt{Var}, \texttt{BeginPg}, \texttt{EndPg}, \texttt{let}, \texttt{Int}, \texttt{Float}, \texttt{if}, \texttt{then}, \texttt{else}, \texttt{while}, \texttt{for}, \texttt{do}, \texttt{from}, \texttt{to}, \texttt{step}, \texttt{input}, \texttt{output}, \texttt{@define}, \texttt{Const}
+	\item \textbf{Control flow structures}: Tokens \texttt{if}, \texttt{then}, \texttt{else}, \texttt{while}, \texttt{for}, \texttt{do}, \texttt{from}, \texttt{to}, \texttt{step}
+	\item \textbf{Declarations}: Tokens \texttt{let}, \texttt{Int}, \texttt{Float}, \texttt{Const}
+	\item \textbf{Program structure}: Tokens \texttt{MainPrgm}, \texttt{Var}, \texttt{BeginPg}, \texttt{EndPg}
+	\item \textbf{Operators}: Arithmetic \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, comparison \texttt{>}, \texttt{<}, \texttt{>=}, \texttt{<=}, \texttt{==}, \texttt{!=}, and logical operators \texttt{AND}, \texttt{OR}.
+	\item \textbf{Punctuation}: Symbols \texttt{;}, \texttt{,}, \texttt{:}, \texttt{[}, \texttt{]}, \texttt{{} , \texttt{}}, \texttt{(}, \texttt{)}
 	\item \textbf{Literals}: Integer, floating-point, and string values
 	\item \textbf{Identifiers}: User-defined names
 \end{itemize}
@@ -172,34 +179,36 @@ pub struct TokenWithMetaData {
 \subsection{Lexer Implementation with Logos}
 The MiniSoft lexer uses Logos' declarative approach to define token patterns:
 
-\begin{lstlisting}[caption={Sample Token Definitions}]
-#[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(extras = Line)]
-pub enum Token {
-    // Whitespace handling
-    #[regex(r"[ \t\f\r]+", logos::skip)]
-    #[regex(r"\n", newline_callback)]
-    
-    // Keywords
-    #[token("MainPrgm")]
-    MainPrgm,
-    #[token("BeginPg")]
-    BeginPg,
-    #[token("if")]
-    If,
-    
-    // Literals
-    #[regex("[0-9]+", parse_int_literal)]
-    IntLiteral(i32),
-    
-    #[regex("\"[^\"]*\"", parse_string_literal)]
-    StringLiteral(String),
-    
-    // Comments (ignored)
-    #[regex("<\\!-([^-\n]|(-[^!\n]))*-\\!>", logos::skip)]
-    Comment,
-}
+\begin{lstlisting}[caption={Logos Token Definitions Syntax}]
+#[pattern_type("matching_rule", processing_callback)]
+TokenVariant(OutputType)
 \end{lstlisting}
+
+\begin{lstlisting}[caption={Sample Token Definitions}]
+    #[derive(Logos, Debug, PartialEq, Clone)]
+    #[logos(extras = Line)]
+    pub enum Token {
+        // Whitespace handling
+        #[regex(r"[ \t\f\r]+", logos::skip)]
+        #[regex(r"\n", newline_callback)]
+        
+        // Keywords
+        #[token("MainPrgm")]
+        MainPrgm,
+        #[token("BeginPg")]
+        BeginPg,
+        #[token("if")]
+        If,
+        
+        // Literals
+        #[regex("[0-9]+", parse_int_literal)]
+        IntLiteral(i32),
+        
+        #[regex("\"[^\"]*\"", parse_string_literal)]
+        StringLiteral(String),
+        
+    }
+    \end{lstlisting}
 
 This approach makes the lexer's behavior clear and maintainable, with different token types handled through specific patterns and callbacks.
 
@@ -236,8 +245,14 @@ MiniSoft supports two comment styles:
 	\item XML-style comments: \texttt{<!-- comment -->}
 \end{itemize}
 
+\begin{lstlisting}[caption={Comment Handling}]
+    // Comments (ignored)
+    #[regex("<\\!-([^-\n]|(-[^!\n]))*-\\!>", logos::skip)]
+    Comment,
+\end{lstlisting}
+
 \subsection{Error Handling and Reporting}
-The lexer detects and reports various lexical errors:
+The lexer detects and aggregates all lexical errors during tokenization, halting compilation upon encountering any such errors to ensure early failure.
 
 \begin{lstlisting}[caption={Lexical Error Types}]
 #[derive(Debug, Clone, PartialEq)]
@@ -271,6 +286,128 @@ Suggestion: Identifiers must be 14 characters or less
 Syntax analysis determines whether tokens form valid language constructs according to the grammar rules. In the MiniSoft compiler, this phase is implemented using LALRPOP, which allows expressing grammar rules in a readable format.
 
 The parser verifies that tokens follow grammatical rules, detects syntax errors, and organizes tokens into an Abstract Syntax Tree (AST).
+
+
+\subsection{Grammer  for  Syntax Analysis}
+The MiniSoft grammar is formally defined as LR(1) production rules with embedded semantic actions, ensuring unambiguous parsing and full language coverage.
+
+\begin{equation*}
+    G = (N, T, S, P)
+    \end{equation*}
+    
+    \subsubsection*{Components:}
+    \begin{itemize}
+        \item \textbf{Non-Terminals (N):} Grammar variables
+        \item \textbf{Terminals (T):} Language tokens
+        \item \textbf{Start Symbol (S):} Program
+        \item \textbf{Productions (P):} Derivation rules
+    \end{itemize}
+    
+    \subsubsection*{Formal Definition:}
+    
+    \begin{minipage}[t]{0.48\textwidth}
+    \underline{Non-Terminals:}
+    \begin{align*}
+    N = \{ & \text{Program, Declarations,} \\
+           & \text{Declaration, TypeSpec,} \\
+           & \text{Scope, Statement,} \\
+           & \text{LValue, Expression,} \\
+           & \text{LogicalExpr, ComparisonExpr,} \\
+           & \text{AdditiveExpr, MultiplicativeExpr,} \\
+           & \text{UnaryExpr, PrimaryExpr,} \\
+           & \text{LiteralValue, IdList, ExprList,} \\
+           & \text{OutputExprList, OutputExpression,} \\
+           & \text{OutputAdditiveExpr,} \\
+           & \text{OutputMultiplicativeExpr,} \\
+           & \text{OutputPrimaryExpr} \}
+    \end{align*}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+    \underline{Terminals:}
+    \begin{align*}
+    T = \{ & \text{``MainPrgm'', ``Var'', ``BeginPg'', ``EndPg'',} \\
+           & \text{``let'', ``@define'', ``Const'', ``if'', ``then'',} \\
+           & \text{``else'', ``do'', ``while'', ``for'', ``from'',} \\
+           & \text{``to'', ``step'', ``input'', ``output'', ``Int'',} \\
+           & \text{``Float'', } \mathit{Id}, \mathit{Int}, \mathit{Float}, \mathit{String}, \\
+           & \text{``;'', ``,'', ``:'', ``['', ``]'', ``('', ``)'',} \\
+           & \text{``\{'', ``\}'', ``:='', ``='', ``+'', ``-''} \\
+           & \text{``*'', ``/'', ``>'', ``<'', ``>='', ``<='',} \\
+           & \text{``=='', ``!='', ``AND'', ``OR'', ``!''} \}
+    \end{align*}
+    \end{minipage}
+    
+    \vspace{5mm}
+    \noindent\textbf{Production Rules (P):}
+    \begin{align*}
+    \text{Program} &\rightarrow \text{``MainPrgm'' } \mathit{Id} \text{ ``;'' ``Var'' } \text{Declarations} \\
+                  &\quad \text{``BeginPg'' } \text{Scope} \text{ ``EndPg'' ``;''} \\
+    \text{Declarations} &\rightarrow \text{Declaration}^* \\
+    \text{Declaration} &\rightarrow \text{``let'' } \text{IdList} \text{ ``:'' } \text{TypeSpec} \text{ ``;''} \\
+                     &\mid \text{``let'' } \text{IdList} \text{ ``:'' ``['' } \text{TypeSpec} \text{ ``;'' } \mathit{Int} \text{ ``]'' ``;''} \\
+                     &\mid \text{``let'' } \text{IdList} \text{ ``:'' } \text{TypeSpec} \text{ ``='' } \text{Expression} \text{ ``;''} \\
+                     &\mid \text{``let'' } \text{IdList} \text{ ``:'' ``['' } \text{TypeSpec} \text{ ``;'' } \mathit{Int} \text{ ``]''} \\
+                     &\quad \text{ ``='' ``\{'' } \text{ExprList} \text{ ``\}'' ``;''} \\
+                     &\mid \text{``@define'' ``Const'' } \mathit{Id} \text{ ``:'' } \text{TypeSpec} \\
+                     &\quad \text{ ``='' } \text{LiteralValue} \text{ ``;''} \\
+    \text{TypeSpec} &\rightarrow \text{``Int''} \mid \text{``Float''} \\
+    \text{Scope} &\rightarrow \text{``\{'' } \text{Statement}^* \text{ ``\}''} \\
+    \text{Statement} &\rightarrow \text{LValue} \text{ ``:='' } \text{Expression} \text{ ``;''} \\
+                   &\mid \text{``if'' ``('' } \text{Expression} \text{ ``)'' ``then'' } \text{Scope} \\
+                   &\quad [\text{``else'' } \text{Scope}] \\
+                   &\mid \text{``do'' } \text{Scope} \text{ ``while'' ``('' } \text{Expression} \text{ ``)'' ``;''} \\
+                   &\mid \text{``for'' } \text{LValue} \text{ ``from'' } \text{Expression} \\
+                   &\quad \text{ ``to'' } \text{Expression} \text{ ``step'' } \text{Expression} \text{ Scope} \\
+                   &\mid \text{``input'' ``('' } \text{LValue} \text{ ``)'' ``;''} \\
+                   &\mid \text{``output'' ``('' } \text{OutputExprList} \text{ ``)'' ``;''} \\
+    \text{LValue} &\rightarrow \mathit{Id} \\
+                 &\mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \\
+    \text{Expression} &\rightarrow \text{LogicalExpr} \\
+    \text{LogicalExpr} &\rightarrow \text{ComparisonExpr} \\
+                      &\quad \{ \text{(``OR'' $\mid$ ``AND'') } \text{ComparisonExpr} \} \\
+    \text{ComparisonExpr} &\rightarrow \text{AdditiveExpr} \\
+                         &\quad \{ \text{(``=='' $\mid$ ``!='' $\mid$ ``<'' $\mid$ ``>'' $\mid$ ``<='' $\mid$ ``>='')} \\
+                         &\quad \text{AdditiveExpr} \} \\
+    \text{AdditiveExpr} &\rightarrow \text{MultiplicativeExpr} \\
+                       &\quad \{ \text{(``+'' $\mid$ ``-'') } \text{MultiplicativeExpr} \} \\
+    \text{MultiplicativeExpr} &\rightarrow \text{UnaryExpr} \\
+                             &\quad \{ \text{(``*'' $\mid$ ``/'') } \text{UnaryExpr} \} \\
+    \text{UnaryExpr} &\rightarrow [\text{``!''}] \text{PrimaryExpr} \\
+    \text{PrimaryExpr} &\rightarrow \mathit{Id} \\
+                     &\mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \\
+                     &\mid \text{LiteralValue} \\
+                     &\mid \text{``('' } \text{Expression} \text{ ``)''} \\
+    \text{LiteralValue} &\rightarrow \mathit{Int} \mid \mathit{Float} \mid \mathit{String} \\
+    \text{IdList} &\rightarrow \mathit{Id} \{ \text{``,'' } \mathit{Id} \} \\
+    \text{ExprList} &\rightarrow \text{Expression} \{ \text{``,'' } \text{Expression} \} \\
+    \text{OutputExprList} &\rightarrow [ \text{OutputExpression} \\
+                         &\quad \{ \text{``,'' } \text{OutputExpression} \} ] \\
+    \text{OutputExpression} &\rightarrow \mathit{String} \\
+                          &\mid \text{OutputAdditiveExpr} \\
+    \text{OutputAdditiveExpr} &\rightarrow \text{OutputMultiplicativeExpr} \\
+                             &\quad \{ \text{(``+'' $\mid$ ``-'') } \text{OutputMultiplicativeExpr} \} \\
+    \text{OutputMultiplicativeExpr} &\rightarrow \text{OutputPrimaryExpr} \\
+                                  &\quad \{ \text{(``*'' $\mid$ ``/'') } \text{OutputPrimaryExpr} \} \\
+    \text{OutputPrimaryExpr} &\rightarrow \mathit{Id} \\
+                           &\mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \\
+                           &\mid \text{LiteralValue} \\
+                           &\mid \text{``('' } \text{OutputAdditiveExpr} \text{ ``)''}
+    \end{align*}
+    
+    
+    \noindent\textbf{Key Features:}
+    \begin{itemize}
+        \item LR(1) parsing compatible
+        \item Type-aware productions
+        \item Explicit scoping rules
+        \item Complete expression hierarchy
+        \item Array support in declarations
+        \item Input/output operations
+        \item Control flow constructs
+        \item Constant definitions
+    \end{itemize}
+
 
 \subsection{Grammar Specification with LALRPOP}
 LALRPOP uses LR(1) parsing techniques to analyze program structure. The grammar for MiniSoft is specified in a declarative format.
@@ -383,8 +520,7 @@ This grammar ensures operators are evaluated in the correct precedence order, fr
 \end{enumerate}
 
 \subsection{Error Handling and Reporting}
-The parser incorporates sophisticated error handling to provide clear feedback when syntax errors are encountered:
-
+The parser detects and reports the first encountered syntax error with detailed feedback, then immediately terminates compilation to ensure prompt error resolution.
 \begin{lstlisting}[caption={Syntax Error Types}]
 #[derive(Debug)]
 pub enum SyntaxError {
@@ -461,6 +597,93 @@ pub struct Symbol {
 }
 \end{lstlisting}
 
+
+\subsection{Semantic Analyzer Modules}
+
+The semantic analyzer delegates specific tasks to three specialized modules:
+
+\subsubsection{Declaration Analyzer}
+
+\textbf{Responsibilities:}
+\begin{itemize}
+    \item Handles variable, array, and constant declarations
+    \item Validates and registers entities in the symbol table
+\end{itemize}
+
+\textbf{Key Functions:}
+\begin{itemize}
+    \item \texttt{handle\_variable\_declaration}: Validates variables without initial values
+    \item \texttt{handle\_variable\_declaration\_with\_init}: Validates initialized variables
+    \item \texttt{handle\_constant\_declaration}: Validates constants
+    \item \texttt{handle\_array\_declaration}: Validates array declarations
+    \item \texttt{handle\_array\_declaration\_with\_init}: Validates initialized arrays
+\end{itemize}
+
+\textbf{Errors Handled:}
+\begin{itemize}
+    \item Duplicate declarations
+    \item Type mismatches
+    \item Array size mismatches
+\end{itemize}
+
+\subsubsection{Statement Analyzer}
+
+\textbf{Responsibilities:}
+\begin{itemize}
+    \item Analyzes program statements
+    \item Handles assignments, control flow, and I/O operations
+\end{itemize}
+
+\textbf{Key Functions:}
+\begin{itemize}
+    \item \texttt{handle\_assignment}: Validates assignments
+    \item \texttt{handle\_condition}: Analyzes control flow conditions
+    \item \texttt{handle\_scope}: Analyzes statement blocks
+    \item \texttt{handle\_forloop}: Analyzes for loops
+    \item \texttt{handle\_input/output}: Validates I/O operations
+\end{itemize}
+
+\textbf{Errors Handled:}
+\begin{itemize}
+    \item Type mismatches
+    \item Invalid identifiers
+    \item Non-boolean conditions
+    \item Constant modification
+\end{itemize}
+
+\subsubsection{Expression Analyzer}
+
+\textbf{Responsibilities:}
+\begin{itemize}
+    \item Analyzes expressions
+    \item Handles literals, identifiers, and operations
+\end{itemize}
+
+\textbf{Key Functions:}
+\begin{itemize}
+    \item \texttt{handle\_identifier}: Validates identifiers
+    \item \texttt{handle\_array\_access}: Validates array accesses
+    \item \texttt{handle\_literal}: Processes literals
+    \item \texttt{handle\_binary/unary\_operation}: Analyzes operations
+\end{itemize}
+
+\textbf{Errors Handled:}
+\begin{itemize}
+    \item Undeclared identifiers
+    \item Array bounds errors
+    \item Type mismatches
+    \item Division by zero
+\end{itemize}
+
+\subsubsection{Integration Workflow}
+
+\begin{enumerate}
+    \item First pass: Analyze declarations (populate symbol table)
+    \item Second pass: Analyze statements (semantic validation)
+\end{enumerate}
+
+The modular design ensures organized, maintainable analysis with clear separation of concerns.
+
 \subsection{Type System Implementation}
 MiniSoft features a static type system enforcing type compatibility at compile time:
 
@@ -487,66 +710,109 @@ impl Type {
 }
 \end{lstlisting}
 
-\subsection{Expression Analysis}
-Expression analysis recursively examines expressions to determine types and detect errors:
+\subsection{Expression Evaluation}
+The \texttt{expression\_analyzer} module evaluates and analyzes expressions during semantic analysis, ensuring semantic validity, type rule adherence, and performing constant folding where possible.
 
-\begin{lstlisting}[caption={Expression Analysis Example}]
-fn analyze_expression(&mut self, expr: &Expression) -> Option<ValueType> {
-    match &expr.node {
-        // For variables, look up type in symbol table
-        ExpressionKind::Identifier(name) => {
-            if !self.symbol_table.contains(name) {
-                self.undeclared_identifier_error(&expr.span, name);
-                None
-            } else {
-                let symbol = self.symbol_table.get(name).unwrap();
-                Some(ValueType::new(symbol.symbol_type.clone(), None))
-            }
-        },
-        
-        // For binary operations, analyze both sides
-        ExpressionKind::BinaryOp(left, op, right) => {
-            let left_type = self.analyze_expression(left);
-            let right_type = self.analyze_expression(right);
-            
-            // Type checking logic based on operator...
-        },
-        
-        // Other cases...
-    }
-}
-\end{lstlisting}
+\subsubsection*{Key Concepts}
+\begin{itemize}
+    \item \textbf{Expression Types}:
+    \begin{itemize}
+        \item Literals (constants like integers, floats, strings)
+        \item Identifiers (variables/constants by name)
+        \item Array Access (elements accessed by index)
+        \item Binary Operations (two operands, e.g., +, -)
+        \item Unary Operations (single operand, e.g., !)
+    \end{itemize}
+    
+    \item \textbf{ValueType}:
+    \begin{itemize}
+        \item \texttt{typ}: Expression type (Int, Float)
+        \item \texttt{value}: Evaluated value (if compile-time known)
+    \end{itemize}
+\end{itemize}
 
-\subsection{Constant Expression Evaluation}
-MiniSoft's semantic analyzer can evaluate constant expressions at compile time:
+\subsubsection*{Evaluation Workflow}
+\begin{itemize}
+    \item \texttt{analyze\_expression}: Dispatches to appropriate handler:
+    \begin{itemize}
+        \item Identifiers $\rightarrow$ \texttt{handle\_identifier}
+        \item Array Access $\rightarrow$ \texttt{handle\_array\_access}
+        \item Literals $\rightarrow$ \texttt{handle\_literal}
+        \item Binary Ops $\rightarrow$ \texttt{handle\_binary\_operation}
+        \item Unary Ops $\rightarrow$ \texttt{handle\_unary\_operation}
+    \end{itemize}
+\end{itemize}
 
-\begin{lstlisting}[caption={Constant Evaluation}]
-pub fn evaluate_constant_expression(&mut self, expr: &Expression) -> Option<LiteralKind> {
-    match &expr.node {
-        ExpressionKind::Literal(lit) => Some(lit.node.clone()),
-        
-        ExpressionKind::Identifier(name) => {
-            // Look up constant value if available
-            if let Some(symbol) = self.symbol_table.get(name) {
-                if symbol.is_constant { /* Return value */ }
-            }
-            None
-        }
-        
-        ExpressionKind::BinaryOp(left, op, right) => {
-            // Recursively evaluate operands and apply operator
-            let left_val = self.evaluate_constant_expression(left)?;
-            let right_val = self.evaluate_constant_expression(right)?;
-            
-            // Calculate result based on operator...
-        }
-    }
-}
-\end{lstlisting}
+\subsubsection*{Expression Handlers}
+\begin{enumerate}
+    \item \textbf{Identifiers}
+    \begin{itemize}
+        \item Function: \texttt{handle\_identifier}
+        \item Purpose: Validates existence in symbol table
+        \item Errors: Undeclared identifier
+        \item Example:
+        \begin{lstlisting}
+let x = 5;  // x resolves to Int with value 5
+        \end{lstlisting}
+    \end{itemize}
+    
+    \item \textbf{Array Access}
+    \begin{itemize}
+        \item Function: \texttt{handle\_array\_access}
+        \item Errors: Undeclared, OOB, non-array, index type
+        \item Example:
+        \begin{lstlisting}
+let arr = [1, 2, 3];
+let x = arr[1];  // Int with value 2
+        \end{lstlisting}
+    \end{itemize}
+    
+    \item \textbf{Literals}
+    \begin{itemize}
+        \item Function: \texttt{handle\_literal}
+        \item Example:
+        \begin{lstlisting}
+let x = 42;    // Int(42)
+let y = 3.14;  // Float(3.14)
+        \end{lstlisting}
+    \end{itemize}
+    
+    \item \textbf{Binary Operations}
+    \begin{itemize}
+        \item Function: \texttt{handle\_binary\_operation}
+        \item Operators: +, -, *, /, <, >, ==, !=, \&\&, ||
+        \item Errors: Type mismatch, division by zero
+        \item Example:
+        \begin{lstlisting}
+let x = 5 + 3;   // Int(8)
+let y = 10 / 0;  // Error
+        \end{lstlisting}
+    \end{itemize}
+    
+    \item \textbf{Unary Operations}
+    \begin{itemize}
+        \item Function: \texttt{handle\_unary\_operation}
+        \item Operators: !
+        \item Errors: Invalid logical values
+        \item Example:
+        \begin{lstlisting}
+let x = !1;  // Int(0)
+let y = !5;  // Error
+        \end{lstlisting}
+    \end{itemize}
+\end{enumerate}
+
+
+\subsubsection*{Constant Folding}
+Evaluates constant expressions at compile time:
+\begin{itemize}
+    \item \texttt{5 + 3} $\rightarrow$ \texttt{8}
+    \item \texttt{10 / 2} $\rightarrow$ \texttt{5}
+\end{itemize}
+
 
 \subsection{Error Detection and Reporting}
-The semantic analyzer detects numerous error categories:
-
+The semantic analyzer performs comprehensive validation, detecting and collecting all semantic errors (type mismatches, undefined variables, scope violations, etc.) before reporting them collectively to allow for batch fixes.
 \begin{lstlisting}[caption={Semantic Error Types}]
 #[derive(Debug)]
 pub enum SemanticError {
@@ -791,28 +1057,8 @@ Suggestion: Check the divisor value to ensure it is not zero
 \section{Testing and Validation}
 \subsection{Test Methodology}
 The MiniSoft compiler was tested using a comprehensive suite of test cases designed to verify functionality across all compilation phases. Tests were developed using both black-box and white-box approaches to ensure complete coverage.
-
 \subsection{Test Cases}
 The test suite includes unit tests for individual components and integration tests for the complete compilation pipeline:
-
-\begin{table}[H]
-	\centering
-	\begin{tabularx}{\textwidth}{|X|X|X|}
-		\hline
-		\textbf{Test Category} & \textbf{Number of Tests} & \textbf{Pass Rate} \\
-		\hline
-		Lexical Analysis       & 20                       & 100\%              \\
-		\hline
-		Syntax Analysis        & 30                       & 97\%               \\
-		\hline
-		Semantic Analysis      & 25                       & 95\%               \\
-		\hline
-		Code Generation        & 15                       & 90\%               \\
-		\hline
-	\end{tabularx}
-	\caption{Test Results Summary}
-	\label{tab:test-results}
-\end{table}
 
 \section{Results and Evaluation}
 \subsection{Functionality Assessment}
@@ -842,7 +1088,7 @@ EndPg;
 
 \section{Conclusion}
 \subsection{Achievements}
-The MiniSoft compiler successfully implements a complete compilation pipeline that translates MiniSoft source code into executable code. Key achievements include:
+The MiniSoft compiler successfully implements a complete compilation pipeline that translates MiniSoft source code into  quadruples format. Key achievements include:
 
 \begin{itemize}
 	\item A robust lexical analyzer using Logos
@@ -864,6 +1110,7 @@ Challenges encountered during implementation included:
 \subsection{Future Improvements}
 Potential future enhancements include:
 \begin{itemize}
+    \item Add executable generation (binary/bytecode output)
 	\item Additional optimization passes
 	\item Support for functions and procedures
 	\item Enhanced type system with type conversion
@@ -871,16 +1118,6 @@ Potential future enhancements include:
 	\item IDE integration for interactive development
 \end{itemize}
 
-\appendix
-\section{MiniSoft Language Specification}
-MiniSoft is a simple, statically typed programming language with the following features:
-\begin{itemize}
-	\item Three basic types: Int, Float, and String
-	\item Single-dimensional arrays
-	\item Control structures: if-then-else, do-while, and for loops
-	\item Assignment and arithmetic operations
-	\item Input and output operations
-\end{itemize}
 
 \begin{thebibliography}{9}
 	\bibitem{rust} The Rust Programming Language: \url{https://www.rust-lang.org/}
