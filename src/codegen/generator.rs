@@ -15,12 +15,12 @@ impl CodeGenerator {
         }
     }
 
-    pub fn generate_code(&mut self, ast: &Program) -> QuadrupleProgram {
+    pub fn generate_code(&mut self, ast: &Program) -> Option<QuadrupleProgram> {
         // Process each statement in the program
         for statement in &ast.statements {
             self.generate_statement(statement);
         }
-        self.program.clone()
+        Some(self.program.clone())
     }
 
     fn generate_statement(&mut self, statement: &Statement) {

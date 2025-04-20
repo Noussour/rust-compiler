@@ -11,7 +11,7 @@ mod integration_test {
         let input = fs::read_to_string(test_file_path).expect("Failed to read test file");
         let tokens = tokenize(&input);
         let program = parse(tokens.0, &input).expect("Parse error");
-        let mut analyzer = SemanticAnalyzer::new(input);
+        let mut analyzer = SemanticAnalyzer::new(&input);
         analyzer.analyze(&program);
         let errors = analyzer.get_errors();
         assert!(errors.is_empty(), "Expected no errors, found: {:?}", errors);
@@ -19,11 +19,11 @@ mod integration_test {
 
     #[test]
     fn test_invalid_sample_program() {
-        let test_file_path = "examples/invalid/invalid_program.ms";
+        let test_file_path = "examples/invalid/errors_sample.ms";
         let input = fs::read_to_string(test_file_path).expect("Failed to read test file");
         let tokens = tokenize(&input);
         let program = parse(tokens.0, &input).expect("Parse error");
-        let mut analyzer = SemanticAnalyzer::new(input);
+        let mut analyzer = SemanticAnalyzer::new(&input);
         analyzer.analyze(&program);
         let errors = analyzer.get_errors();
         assert!(!errors.is_empty(), "Expected errors, found none");
@@ -38,7 +38,7 @@ mod integration_test {
                 let input = fs::read_to_string(&path).unwrap();
                 let tokens = tokenize(&input);
                 let program = parse(tokens.0, &input).expect("Parse error");
-                let mut analyzer = SemanticAnalyzer::new(input);
+                let mut analyzer = SemanticAnalyzer::new(&input);
                 analyzer.analyze(&program);
                 let errors = analyzer.get_errors();
                 assert!(errors.is_empty(), "File {:?} failed: {:?}", path, errors);
@@ -55,7 +55,7 @@ mod integration_test {
                 let input = fs::read_to_string(&path).unwrap();
                 let tokens = tokenize(&input);
                 let program = parse(tokens.0, &input).expect("Parse error");
-                let mut analyzer = SemanticAnalyzer::new(input);
+                let mut analyzer = SemanticAnalyzer::new(&input);
                 analyzer.analyze(&program);
                 let errors = analyzer.get_errors();
                 assert!(!errors.is_empty(), "File {:?} should have errors", path);

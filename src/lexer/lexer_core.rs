@@ -12,11 +12,6 @@ pub struct TokenWithMetaData {
     pub column: usize,
     pub span: Range<usize>,
 }
-fn get_position<'a>(lexer: &Lexer<'a, Token>, byte_offset: usize) -> (usize, usize) {
-    let line = lexer.extras.line_number;
-    let col = byte_offset - lexer.extras.line_start;
-    (line, col)
-}
 
 pub fn tokenize(source: &str) -> (Vec<TokenWithMetaData>, Vec<LexicalError>) {
     let mut lexer = Token::lexer(source);
@@ -39,7 +34,6 @@ pub fn tokenize(source: &str) -> (Vec<TokenWithMetaData>, Vec<LexicalError>) {
                 });
             }
             Err(_) => {
-                // Create a TokenWithMetaData for the invalid token
                 let invalid_token = TokenWithMetaData {
                     kind: Token::Error,
                     value: value.clone(),
@@ -53,4 +47,10 @@ pub fn tokenize(source: &str) -> (Vec<TokenWithMetaData>, Vec<LexicalError>) {
     }
 
     (valid_tokens, errors)
+}
+
+fn get_position<'a>(lexer: &Lexer<'a, Token>, byte_offset: usize) -> (usize, usize) {
+    let line = lexer.extras.line_number;
+    let col = byte_offset - lexer.extras.line_start;
+    (line, col)
 }
