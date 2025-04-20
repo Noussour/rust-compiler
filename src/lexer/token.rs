@@ -148,7 +148,7 @@ impl fmt::Display for Token {
 fn parse_int_literal(lex: &mut logos::Lexer<Token>) -> Option<i32> {
     let s = lex.slice();
     let parsed = if s.starts_with('(') {
-        s[1..s.len()-1].parse().ok()
+        s[1..s.len() - 1].parse().ok()
     } else {
         s.parse().ok()
     };

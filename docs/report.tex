@@ -4,7 +4,7 @@
 
 % Basic packages
 \usepackage[utf8]{inputenc}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{hyperref}
@@ -68,9 +68,9 @@ The MiniSoft compiler is built using modern tools that enable efficient implemen
 
 \begin{itemize}
 	\item \textbf{Rust Programming Language}: Chosen for its memory safety, performance, and pattern matching capabilities.
-    
+
 	\item \textbf{Logos}: A high-performance lexer generator for Rust with attribute-based syntax for defining tokens.
-    
+
 	\item \textbf{LALRPOP}: A parser generator for Rust that allows expressing grammar rules in a declarative forma parser generator for Rust that uses the LR(1) parsing algorithm, enabling developers to define grammar rules declaratively.
 
 	\item \textbf{Cranelift}: A code generator framework used to produce optimized machine code.
@@ -142,9 +142,9 @@ Lexical analysis, the first phase of compilation, transforms source code into to
 The lexical analyzer (lexer) scans the input character by character, following two core rules:
 
 \begin{itemize}
-    \item \textbf{Longest Match Rule}: Prioritizes the longest possible valid token (e.g., \texttt{>=} over \texttt{>}).
-    
-    \item \textbf{Priority Rule}: Resolves ambiguities by matching the first declared pattern (e.g., keywords before identifiers).
+	\item \textbf{Longest Match Rule}: Prioritizes the longest possible valid token (e.g., \texttt{>=} over \texttt{>}).
+
+	\item \textbf{Priority Rule}: Resolves ambiguities by matching the first declared pattern (e.g., keywords before identifiers).
 \end{itemize}
 
 The lexer recognizes token patterns while filtering out non-essential elements like whitespace and comments.
@@ -165,16 +165,12 @@ The MiniSoft language employs a comprehensive token classification system:
 
 Each token carries metadata including the original text, line number, column position, and character span.
 
-\begin{lstlisting}[caption={Token Structure}]
-#[derive(Debug, Clone, PartialEq)]
-pub struct TokenWithMetaData {
-    pub kind: Token,     // The token's type
-    pub value: String,   // The actual text from source code
-    pub line: usize,     // Line number in source
-    pub column: usize,   // Column position
-    pub span: Range<usize>, // Character span in source
-}
-\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/lexer/token-struct.png}
+	\caption{Token Structure}
+\end{figure}
 
 \subsection{Lexer Implementation with Logos}
 The MiniSoft lexer uses Logos' declarative approach to define token patterns:
@@ -184,31 +180,12 @@ The MiniSoft lexer uses Logos' declarative approach to define token patterns:
 TokenVariant(OutputType)
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Sample Token Definitions}]
-    #[derive(Logos, Debug, PartialEq, Clone)]
-    #[logos(extras = Line)]
-    pub enum Token {
-        // Whitespace handling
-        #[regex(r"[ \t\f\r]+", logos::skip)]
-        #[regex(r"\n", newline_callback)]
-        
-        // Keywords
-        #[token("MainPrgm")]
-        MainPrgm,
-        #[token("BeginPg")]
-        BeginPg,
-        #[token("if")]
-        If,
-        
-        // Literals
-        #[regex("[0-9]+", parse_int_literal)]
-        IntLiteral(i32),
-        
-        #[regex("\"[^\"]*\"", parse_string_literal)]
-        StringLiteral(String),
-        
-    }
-    \end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\textwidth]{images/lexer/sample-token-definitions.png}
+	\caption{Sample Token Definitions}
+\end{figure}
 
 This approach makes the lexer's behavior clear and maintainable, with different token types handled through specific patterns and callbacks.
 
@@ -225,61 +202,48 @@ Identifiers in MiniSoft have specific constraints:
 	\item Must start with a letter
 \end{itemize}
 
-\begin{lstlisting}[caption={Identifier Validation}]
-fn parse_identifier(lex: &mut logos::Lexer<Token>) -> Option<String> {
-    let s = lex.slice();
-    let has_uppercase_after_first = s.chars().skip(1).any(|c| c.is_ascii_uppercase());
 
-    if s.len() <= 14 && !s.contains("__") && !s.ends_with("_") && !has_uppercase_after_first {
-        Some(s.to_string())
-    } else {
-        None
-    }
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/lexer/identifier-validation.png}
+	\caption{Identifier Validation}
+\end{figure}
 
-\subsubsection{Comments}
+
+\subsubsection{Numbers with Sign}
+MiniSoft supports parsing of signed integer and floating-point literals. The following code demonstrates the implementation:
+
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/lexer/signed-number-validation.png}
+	\caption{Identifier Validation}
+\end{figure}
+
+\subsubsection{Comments and Whitespace}
 MiniSoft supports two comment styles:
 \begin{itemize}
 	\item C-style comments: \texttt{\{--comment--\}}
 	\item XML-style comments: \texttt{<!-- comment -->}
 \end{itemize}
 
-\begin{lstlisting}[caption={Comment Handling}]
-    // Comments (ignored)
-    #[regex("<\\!-([^-\n]|(-[^!\n]))*-\\!>", logos::skip)]
-    Comment,
-\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/lexer/comment-whitespace-handling.png}
+	\caption{Comment and Whitespace Handling}
+\end{figure}
 
 \subsection{Error Handling and Reporting}
 The lexer detects and aggregates all lexical errors during tokenization, halting compilation upon encountering any such errors to ensure early failure.
 
-\begin{lstlisting}[caption={Lexical Error Types}]
-#[derive(Debug, Clone, PartialEq)]
-pub enum LexicalErrorType {
-    UnterminatedString,
-    NonAsciiCharacters,
-    IdentifierTooLong,
-    InvalidIdentifier,
-    ConsecutiveUnderscores,
-    TrailingUnderscore,
-    IdentifierStartsWithNumber,
-    IntegerOutOfRange,
-    SignedNumberNotParenthesized,
-    InvalidToken,
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/lexer/lexical-error-types.png}
+	\caption{Lexical Error Types}
+\end{figure}
 
-When errors are found, the lexer creates detailed messages with exact positions, problematic text, and suggestions for fixing issues.
-
-\begin{lstlisting}[caption={Sample Error Output}]
-Lexical Error: Identifier 'myVeryLongVariableName' exceeds maximum length of 14 characters
---> line 3, column 5
-  |
-3 | let myVeryLongVariableName = 10;
-  |     ^^^^^^^^^^^^^^^^^^^^^^ 
-Suggestion: Identifiers must be 14 characters or less
-\end{lstlisting}
+When errors are found, the lexer creates detailed messages with exact positions, problematic text, and suggestions for fixing issues (an example of error output can be found in the error handling section).
 
 \section{Syntax Analysis}
 \subsection{Overview of Syntax Analysis}
@@ -288,125 +252,155 @@ Syntax analysis determines whether tokens form valid language constructs accordi
 The parser verifies that tokens follow grammatical rules, detects syntax errors, and organizes tokens into an Abstract Syntax Tree (AST).
 
 
-\subsection{Grammer  for  Syntax Analysis}
+\subsection{Grammar for Syntax Analysis}
 The MiniSoft grammar is formally defined as LR(1) production rules with embedded semantic actions, ensuring unambiguous parsing and full language coverage.
 
-\begin{equation*}
-    G = (N, T, S, P)
-    \end{equation*}
-    
-    \subsubsection*{Components:}
-    \begin{itemize}
-        \item \textbf{Non-Terminals (N):} Grammar variables
-        \item \textbf{Terminals (T):} Language tokens
-        \item \textbf{Start Symbol (S):} Program
-        \item \textbf{Productions (P):} Derivation rules
-    \end{itemize}
-    
-    \subsubsection*{Formal Definition:}
-    
-    \begin{minipage}[t]{0.48\textwidth}
-    \underline{Non-Terminals:}
-    \begin{align*}
-    N = \{ & \text{Program, Declarations,} \\
-           & \text{Declaration, TypeSpec,} \\
-           & \text{Scope, Statement,} \\
-           & \text{LValue, Expression,} \\
-           & \text{LogicalExpr, ComparisonExpr,} \\
-           & \text{AdditiveExpr, MultiplicativeExpr,} \\
-           & \text{UnaryExpr, PrimaryExpr,} \\
-           & \text{LiteralValue, IdList, ExprList,} \\
-           & \text{OutputExprList, OutputExpression,} \\
-           & \text{OutputAdditiveExpr,} \\
-           & \text{OutputMultiplicativeExpr,} \\
-           & \text{OutputPrimaryExpr} \}
-    \end{align*}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[t]{0.48\textwidth}
-    \underline{Terminals:}
-    \begin{align*}
-    T = \{ & \text{``MainPrgm'', ``Var'', ``BeginPg'', ``EndPg'',} \\
-           & \text{``let'', ``@define'', ``Const'', ``if'', ``then'',} \\
-           & \text{``else'', ``do'', ``while'', ``for'', ``from'',} \\
-           & \text{``to'', ``step'', ``input'', ``output'', ``Int'',} \\
-           & \text{``Float'', } \mathit{Id}, \mathit{Int}, \mathit{Float}, \mathit{String}, \\
-           & \text{``;'', ``,'', ``:'', ``['', ``]'', ``('', ``)'',} \\
-           & \text{``\{'', ``\}'', ``:='', ``='', ``+'', ``-''} \\
-           & \text{``*'', ``/'', ``>'', ``<'', ``>='', ``<='',} \\
-           & \text{``=='', ``!='', ``AND'', ``OR'', ``!''} \}
-    \end{align*}
-    \end{minipage}
-    
-    \vspace{5mm}
-    \noindent\textbf{Production Rules (P):}
-    \begin{align*}
-    \text{Program} &\rightarrow \text{``MainPrgm'' } \mathit{Id} \text{ ``;'' ``Var'' } \text{Declarations} \\
-                  &\quad \text{``BeginPg'' } \text{Scope} \text{ ``EndPg'' ``;''} \\
-    \text{Declarations} &\rightarrow \text{Declaration}^* \\
-    \text{Declaration} &\rightarrow \text{``let'' } \text{IdList} \text{ ``:'' } \text{TypeSpec} \text{ ``;''} \\
-                     &\mid \text{``let'' } \text{IdList} \text{ ``:'' ``['' } \text{TypeSpec} \text{ ``;'' } \mathit{Int} \text{ ``]'' ``;''} \\
-                     &\mid \text{``let'' } \text{IdList} \text{ ``:'' } \text{TypeSpec} \text{ ``='' } \text{Expression} \text{ ``;''} \\
-                     &\mid \text{``let'' } \text{IdList} \text{ ``:'' ``['' } \text{TypeSpec} \text{ ``;'' } \mathit{Int} \text{ ``]''} \\
-                     &\quad \text{ ``='' ``\{'' } \text{ExprList} \text{ ``\}'' ``;''} \\
-                     &\mid \text{``@define'' ``Const'' } \mathit{Id} \text{ ``:'' } \text{TypeSpec} \\
-                     &\quad \text{ ``='' } \text{LiteralValue} \text{ ``;''} \\
-    \text{TypeSpec} &\rightarrow \text{``Int''} \mid \text{``Float''} \\
-    \text{Scope} &\rightarrow \text{``\{'' } \text{Statement}^* \text{ ``\}''} \\
-    \text{Statement} &\rightarrow \text{LValue} \text{ ``:='' } \text{Expression} \text{ ``;''} \\
-                   &\mid \text{``if'' ``('' } \text{Expression} \text{ ``)'' ``then'' } \text{Scope} \\
-                   &\quad [\text{``else'' } \text{Scope}] \\
-                   &\mid \text{``do'' } \text{Scope} \text{ ``while'' ``('' } \text{Expression} \text{ ``)'' ``;''} \\
-                   &\mid \text{``for'' } \text{LValue} \text{ ``from'' } \text{Expression} \\
-                   &\quad \text{ ``to'' } \text{Expression} \text{ ``step'' } \text{Expression} \text{ Scope} \\
-                   &\mid \text{``input'' ``('' } \text{LValue} \text{ ``)'' ``;''} \\
-                   &\mid \text{``output'' ``('' } \text{OutputExprList} \text{ ``)'' ``;''} \\
-    \text{LValue} &\rightarrow \mathit{Id} \\
-                 &\mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \\
-    \text{Expression} &\rightarrow \text{LogicalExpr} \\
-    \text{LogicalExpr} &\rightarrow \text{ComparisonExpr} \\
-                      &\quad \{ \text{(``OR'' $\mid$ ``AND'') } \text{ComparisonExpr} \} \\
-    \text{ComparisonExpr} &\rightarrow \text{AdditiveExpr} \\
-                         &\quad \{ \text{(``=='' $\mid$ ``!='' $\mid$ ``<'' $\mid$ ``>'' $\mid$ ``<='' $\mid$ ``>='')} \\
-                         &\quad \text{AdditiveExpr} \} \\
-    \text{AdditiveExpr} &\rightarrow \text{MultiplicativeExpr} \\
-                       &\quad \{ \text{(``+'' $\mid$ ``-'') } \text{MultiplicativeExpr} \} \\
-    \text{MultiplicativeExpr} &\rightarrow \text{UnaryExpr} \\
-                             &\quad \{ \text{(``*'' $\mid$ ``/'') } \text{UnaryExpr} \} \\
-    \text{UnaryExpr} &\rightarrow [\text{``!''}] \text{PrimaryExpr} \\
-    \text{PrimaryExpr} &\rightarrow \mathit{Id} \\
-                     &\mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \\
-                     &\mid \text{LiteralValue} \\
-                     &\mid \text{``('' } \text{Expression} \text{ ``)''} \\
-    \text{LiteralValue} &\rightarrow \mathit{Int} \mid \mathit{Float} \mid \mathit{String} \\
-    \text{IdList} &\rightarrow \mathit{Id} \{ \text{``,'' } \mathit{Id} \} \\
-    \text{ExprList} &\rightarrow \text{Expression} \{ \text{``,'' } \text{Expression} \} \\
-    \text{OutputExprList} &\rightarrow [ \text{OutputExpression} \\
-                         &\quad \{ \text{``,'' } \text{OutputExpression} \} ] \\
-    \text{OutputExpression} &\rightarrow \mathit{String} \\
-                          &\mid \text{OutputAdditiveExpr} \\
-    \text{OutputAdditiveExpr} &\rightarrow \text{OutputMultiplicativeExpr} \\
-                             &\quad \{ \text{(``+'' $\mid$ ``-'') } \text{OutputMultiplicativeExpr} \} \\
-    \text{OutputMultiplicativeExpr} &\rightarrow \text{OutputPrimaryExpr} \\
-                                  &\quad \{ \text{(``*'' $\mid$ ``/'') } \text{OutputPrimaryExpr} \} \\
-    \text{OutputPrimaryExpr} &\rightarrow \mathit{Id} \\
-                           &\mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \\
-                           &\mid \text{LiteralValue} \\
-                           &\mid \text{``('' } \text{OutputAdditiveExpr} \text{ ``)''}
-    \end{align*}
-    
-    
-    \noindent\textbf{Key Features:}
-    \begin{itemize}
-        \item LR(1) parsing compatible
-        \item Type-aware productions
-        \item Explicit scoping rules
-        \item Complete expression hierarchy
-        \item Array support in declarations
-        \item Input/output operations
-        \item Control flow constructs
-        \item Constant definitions
-    \end{itemize}
+\[
+	G = (N, T, S, P)
+\]
+
+\subsubsection*{Components}
+\begin{itemize}
+	\item \textbf{Non-Terminals (N):} Grammar variables
+	\item \textbf{Terminals (T):} Language tokens
+	\item \textbf{Start Symbol (S):} Program
+	\item \textbf{Productions (P):} Derivation rules
+\end{itemize}
+
+\subsubsection*{Formal Definition}
+
+\noindent\textbf{Non-Terminals:}
+\[
+	N = \{
+	\text{Program, Declarations, Declaration, TypeSpec, Scope, Statement, LValue,}
+\]
+\[
+	\text{Expression, LogicalExpr, ComparisonExpr, AdditiveExpr,}
+\]
+\[
+	\text{MultiplicativeExpr, UnaryExpr, PrimaryExpr, LiteralValue,}
+\]
+\[
+	\text{IdList, ExprList, OutputExprList, OutputExpression,}
+\]
+\[
+	\text{OutputAdditiveExpr, OutputMultiplicativeExpr, OutputPrimaryExpr}
+	\}
+\]
+
+\noindent\textbf{Terminals:}
+\[
+	T = \{
+	\text{``MainPrgm'', ``Var'', ``BeginPg'', ``EndPg'', ``let'', ``@define'', ``Const'', ``if'',}
+\]
+\[
+	\text{``then'', ``else'', ``do'', ``while'', ``for'', ``from'', ``to'', ``step'', ``input'', ``output'',}
+\]
+\[
+	\text{``Int'', ``Float'', } \mathit{Id}, \mathit{Int}, \mathit{Float}, \mathit{String},
+\]
+\[
+	\text{``;'', ``,'' , ``:'', ``['', ``]'', ``('', ``)'', ``\{'', ``\}'', ``:='', ``='', ``+'', ``-'',}
+\]
+\[
+	\text{``*'', ``/'', ``>'', ``<'', ``>='', ``<='', ``=='', ``!='', ``AND'', ``OR'', ``!''}
+	\}
+\]
+
+\small
+\textbf{Production Rules:}
+\[
+	\begin{array}{rl}
+		% Program
+		\text{Program}                  & \rightarrow \text{``MainPrgm'' } \mathit{Id} \text{ ``;'' ``Var'' } \text{Declarations}                                                                                     \\
+		                                & \quad \text{``BeginPg'' } \text{Scope} \text{ ``EndPg'' ``;''}                                                                                                              \\
+
+		% Declarations
+		\text{Declarations}             & \rightarrow \text{Declaration}^*                                                                                                                                            \\
+
+		% Declaration
+		\text{Declaration}              & \rightarrow \text{``let'' } \text{IdList} \text{ ``:'' } \text{TypeSpec} \text{ ``;''}                                                                                      \\
+		                                & \mid \text{``let'' } \text{IdList} \text{ ``:'' ``['' } \text{TypeSpec} \text{ ``;'' } \mathit{Int} \text{ ``]'' ``;''}                                                     \\
+		                                & \mid \text{``let'' } \text{IdList} \text{ ``:'' } \text{TypeSpec} \text{ ``='' } \text{Expression} \text{ ``;''}                                                            \\
+		                                & \mid \text{``let'' } \text{IdList} \text{ ``:'' ``['' } \text{TypeSpec} \text{ ``;'' } \mathit{Int} \text{ ``]'' ``='' ``\{'' } \text{ExprList} \text{ ``\}'' ``;''}        \\
+		                                & \mid \text{``@define'' ``Const'' } \mathit{Id} \text{ ``:'' } \text{TypeSpec} \text{ ``='' } \text{LiteralValue} \text{ ``;''}                                              \\
+
+		% TypeSpec
+		\text{TypeSpec}                 & \rightarrow \text{``Int''} \mid \text{``Float''}                                                                                                                            \\
+
+		% Scope
+		\text{Scope}                    & \rightarrow \text{``\{'' } \text{Statement}^* \text{ ``\}''}                                                                                                                \\
+
+		% Statement
+		\text{Statement}                & \rightarrow \text{LValue} \text{ ``:='' } \text{Expression} \text{ ``;''}                                                                                                   \\
+		                                & \mid \text{``if'' ``('' } \text{Expression} \text{ ``)'' ``then'' } \text{Scope} [\text{``else'' } \text{Scope}]                                                            \\
+		                                & \mid \text{``do'' } \text{Scope} \text{ ``while'' ``('' } \text{Expression} \text{ ``)'' ``;''}                                                                             \\
+		                                & \mid \text{``for'' } \text{LValue} \text{ ``from'' } \text{Expression} \text{ ``to'' } \text{Expression} \text{ ``step'' } \text{Expression} \text{ Scope}                  \\
+		                                & \mid \text{``input'' ``('' } \text{LValue} \text{ ``)'' ``;''}                                                                                                              \\
+		                                & \mid \text{``output'' ``('' } \text{OutputExprList} \text{ ``)'' ``;''}                                                                                                     \\
+
+		% LValue
+		\text{LValue}                   & \rightarrow \mathit{Id} \mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''}                                                                                     \\
+
+		% Expression
+		\text{Expression}               & \rightarrow \text{LogicalExpr}                                                                                                                                              \\
+
+		% LogicalExpr
+		\text{LogicalExpr}              & \rightarrow \text{ComparisonExpr} \{ \text{(``OR'' $\mid$ ``AND'') } \text{ComparisonExpr} \}                                                                               \\
+
+		% ComparisonExpr
+		\text{ComparisonExpr}           & \rightarrow \text{AdditiveExpr} \{ \text{(``=='' $\mid$ ``!='' $\mid$ ``<'' $\mid$ ``>'' $\mid$ ``<='' $\mid$ ``>='')} \text{AdditiveExpr} \}                               \\
+
+		% AdditiveExpr
+		\text{AdditiveExpr}             & \rightarrow \text{MultiplicativeExpr} \{ \text{(``+'' $\mid$ ``-'') } \text{MultiplicativeExpr} \}                                                                          \\
+
+		% MultiplicativeExpr
+		\text{MultiplicativeExpr}       & \rightarrow \text{UnaryExpr} \{ \text{(``*'' $\mid$ ``/'') } \text{UnaryExpr} \}                                                                                            \\
+
+		% UnaryExpr
+		\text{UnaryExpr}                & \rightarrow [\text{``!''}] \text{PrimaryExpr}                                                                                                                               \\
+
+		% PrimaryExpr
+		\text{PrimaryExpr}              & \rightarrow \mathit{Id} \mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \mid \text{LiteralValue} \mid \text{``('' } \text{Expression} \text{ ``)''}         \\
+
+		% LiteralValue
+		\text{LiteralValue}             & \rightarrow \mathit{Int} \mid \mathit{Float} \mid \mathit{String}                                                                                                           \\
+
+		% IdList
+		\text{IdList}                   & \rightarrow \mathit{Id} \{ \text{``,'' } \mathit{Id} \}                                                                                                                     \\
+
+		% ExprList
+		\text{ExprList}                 & \rightarrow \text{Expression} \{ \text{``,'' } \text{Expression} \}                                                                                                         \\
+
+		% OutputExprList
+		\text{OutputExprList}           & \rightarrow [ \text{OutputExpression} \{ \text{``,'' } \text{OutputExpression} \} ]                                                                                         \\
+
+		% OutputExpression
+		\text{OutputExpression}         & \rightarrow \mathit{String} \mid \text{OutputAdditiveExpr}                                                                                                                  \\
+
+		% OutputAdditiveExpr
+		\text{OutputAdditiveExpr}       & \rightarrow \text{OutputMultiplicativeExpr} \{ \text{(``+'' $\mid$ ``-'') } \text{OutputMultiplicativeExpr} \}                                                              \\
+
+		% OutputMultiplicativeExpr
+		\text{OutputMultiplicativeExpr} & \rightarrow \text{OutputPrimaryExpr} \{ \text{(``*'' $\mid$ ``/'') } \text{OutputPrimaryExpr} \}                                                                            \\
+
+		% OutputPrimaryExpr
+		\text{OutputPrimaryExpr}        & \rightarrow \mathit{Id} \mid \mathit{Id} \text{ ``['' } \text{Expression} \text{ ``]''} \mid \text{LiteralValue} \mid \text{``('' } \text{OutputAdditiveExpr} \text{ ``)''} \\
+	\end{array}
+\]
+\normalsize
+
+\subsubsection*{Key Features}
+\begin{itemize}
+	\item LR(1) parsing compatible
+	\item Type-aware productions
+	\item Explicit scoping rules
+	\item Complete expression hierarchy
+	\item Array support in declarations
+	\item Input/output operations
+	\item Control flow constructs
+	\item Constant definitions
+\end{itemize}
 
 
 \subsection{Grammar Specification with LALRPOP}
@@ -606,80 +600,80 @@ The semantic analyzer delegates specific tasks to three specialized modules:
 
 \textbf{Responsibilities:}
 \begin{itemize}
-    \item Handles variable, array, and constant declarations
-    \item Validates and registers entities in the symbol table
+	\item Handles variable, array, and constant declarations
+	\item Validates and registers entities in the symbol table
 \end{itemize}
 
 \textbf{Key Functions:}
 \begin{itemize}
-    \item \texttt{handle\_variable\_declaration}: Validates variables without initial values
-    \item \texttt{handle\_variable\_declaration\_with\_init}: Validates initialized variables
-    \item \texttt{handle\_constant\_declaration}: Validates constants
-    \item \texttt{handle\_array\_declaration}: Validates array declarations
-    \item \texttt{handle\_array\_declaration\_with\_init}: Validates initialized arrays
+	\item \texttt{handle\_variable\_declaration}: Validates variables without initial values
+	\item \texttt{handle\_variable\_declaration\_with\_init}: Validates initialized variables
+	\item \texttt{handle\_constant\_declaration}: Validates constants
+	\item \texttt{handle\_array\_declaration}: Validates array declarations
+	\item \texttt{handle\_array\_declaration\_with\_init}: Validates initialized arrays
 \end{itemize}
 
 \textbf{Errors Handled:}
 \begin{itemize}
-    \item Duplicate declarations
-    \item Type mismatches
-    \item Array size mismatches
+	\item Duplicate declarations
+	\item Type mismatches
+	\item Array size mismatches
 \end{itemize}
 
 \subsubsection{Statement Analyzer}
 
 \textbf{Responsibilities:}
 \begin{itemize}
-    \item Analyzes program statements
-    \item Handles assignments, control flow, and I/O operations
+	\item Analyzes program statements
+	\item Handles assignments, control flow, and I/O operations
 \end{itemize}
 
 \textbf{Key Functions:}
 \begin{itemize}
-    \item \texttt{handle\_assignment}: Validates assignments
-    \item \texttt{handle\_condition}: Analyzes control flow conditions
-    \item \texttt{handle\_scope}: Analyzes statement blocks
-    \item \texttt{handle\_forloop}: Analyzes for loops
-    \item \texttt{handle\_input/output}: Validates I/O operations
+	\item \texttt{handle\_assignment}: Validates assignments
+	\item \texttt{handle\_condition}: Analyzes control flow conditions
+	\item \texttt{handle\_scope}: Analyzes statement blocks
+	\item \texttt{handle\_forloop}: Analyzes for loops
+	\item \texttt{handle\_input/output}: Validates I/O operations
 \end{itemize}
 
 \textbf{Errors Handled:}
 \begin{itemize}
-    \item Type mismatches
-    \item Invalid identifiers
-    \item Non-boolean conditions
-    \item Constant modification
+	\item Type mismatches
+	\item Invalid identifiers
+	\item Non-boolean conditions
+	\item Constant modification
 \end{itemize}
 
 \subsubsection{Expression Analyzer}
 
 \textbf{Responsibilities:}
 \begin{itemize}
-    \item Analyzes expressions
-    \item Handles literals, identifiers, and operations
+	\item Analyzes expressions
+	\item Handles literals, identifiers, and operations
 \end{itemize}
 
 \textbf{Key Functions:}
 \begin{itemize}
-    \item \texttt{handle\_identifier}: Validates identifiers
-    \item \texttt{handle\_array\_access}: Validates array accesses
-    \item \texttt{handle\_literal}: Processes literals
-    \item \texttt{handle\_binary/unary\_operation}: Analyzes operations
+	\item \texttt{handle\_identifier}: Validates identifiers
+	\item \texttt{handle\_array\_access}: Validates array accesses
+	\item \texttt{handle\_literal}: Processes literals
+	\item \texttt{handle\_binary/unary\_operation}: Analyzes operations
 \end{itemize}
 
 \textbf{Errors Handled:}
 \begin{itemize}
-    \item Undeclared identifiers
-    \item Array bounds errors
-    \item Type mismatches
-    \item Division by zero
+	\item Undeclared identifiers
+	\item Array bounds errors
+	\item Type mismatches
+	\item Division by zero
 \end{itemize}
 
 \subsubsection{Integration Workflow}
 
 \begin{enumerate}
-    \item First pass: Analyze declarations (populate symbol table)
-    \item Second pass: Analyze statements (semantic validation)
+	\item First pass: Analyze declarations (populate symbol table)
+	\item Second pass: Analyze statements (semantic validation)
 \end{enumerate}
 
 The modular design ensures organized, maintainable analysis with clear separation of concerns.
@@ -715,99 +709,99 @@ The \texttt{expression\_analyzer} module evaluates and analyzes expressions duri
 
 \subsubsection*{Key Concepts}
 \begin{itemize}
-    \item \textbf{Expression Types}:
-    \begin{itemize}
-        \item Literals (constants like integers, floats, strings)
-        \item Identifiers (variables/constants by name)
-        \item Array Access (elements accessed by index)
-        \item Binary Operations (two operands, e.g., +, -)
-        \item Unary Operations (single operand, e.g., !)
-    \end{itemize}
-    
-    \item \textbf{ValueType}:
-    \begin{itemize}
-        \item \texttt{typ}: Expression type (Int, Float)
-        \item \texttt{value}: Evaluated value (if compile-time known)
-    \end{itemize}
+	\item \textbf{Expression Types}:
+	      \begin{itemize}
+		      \item Literals (constants like integers, floats, strings)
+		      \item Identifiers (variables/constants by name)
+		      \item Array Access (elements accessed by index)
+		      \item Binary Operations (two operands, e.g., +, -)
+		      \item Unary Operations (single operand, e.g., !)
+	      \end{itemize}
+
+	\item \textbf{ValueType}:
+	      \begin{itemize}
+		      \item \texttt{typ}: Expression type (Int, Float)
+		      \item \texttt{value}: Evaluated value (if compile-time known)
+	      \end{itemize}
 \end{itemize}
 
 \subsubsection*{Evaluation Workflow}
 \begin{itemize}
-    \item \texttt{analyze\_expression}: Dispatches to appropriate handler:
-    \begin{itemize}
-        \item Identifiers $\rightarrow$ \texttt{handle\_identifier}
-        \item Array Access $\rightarrow$ \texttt{handle\_array\_access}
-        \item Literals $\rightarrow$ \texttt{handle\_literal}
-        \item Binary Ops $\rightarrow$ \texttt{handle\_binary\_operation}
-        \item Unary Ops $\rightarrow$ \texttt{handle\_unary\_operation}
-    \end{itemize}
+	\item \texttt{analyze\_expression}: Dispatches to appropriate handler:
+	      \begin{itemize}
+		      \item Identifiers $\rightarrow$ \texttt{handle\_identifier}
+		      \item Array Access $\rightarrow$ \texttt{handle\_array\_access}
+		      \item Literals $\rightarrow$ \texttt{handle\_literal}
+		      \item Binary Ops $\rightarrow$ \texttt{handle\_binary\_operation}
+		      \item Unary Ops $\rightarrow$ \texttt{handle\_unary\_operation}
+	      \end{itemize}
 \end{itemize}
 
 \subsubsection*{Expression Handlers}
 \begin{enumerate}
-    \item \textbf{Identifiers}
-    \begin{itemize}
-        \item Function: \texttt{handle\_identifier}
-        \item Purpose: Validates existence in symbol table
-        \item Errors: Undeclared identifier
-        \item Example:
-        \begin{lstlisting}
+	\item \textbf{Identifiers}
+	      \begin{itemize}
+		      \item Function: \texttt{handle\_identifier}
+		      \item Purpose: Validates existence in symbol table
+		      \item Errors: Undeclared identifier
+		      \item Example:
+		            \begin{lstlisting}
 let x = 5;  // x resolves to Int with value 5
         \end{lstlisting}
-    \end{itemize}
-    
-    \item \textbf{Array Access}
-    \begin{itemize}
-        \item Function: \texttt{handle\_array\_access}
-        \item Errors: Undeclared, OOB, non-array, index type
-        \item Example:
-        \begin{lstlisting}
+	      \end{itemize}
+
+	\item \textbf{Array Access}
+	      \begin{itemize}
+		      \item Function: \texttt{handle\_array\_access}
+		      \item Errors: Undeclared, OOB, non-array, index type
+		      \item Example:
+		            \begin{lstlisting}
 let arr = [1, 2, 3];
 let x = arr[1];  // Int with value 2
         \end{lstlisting}
-    \end{itemize}
-    
-    \item \textbf{Literals}
-    \begin{itemize}
-        \item Function: \texttt{handle\_literal}
-        \item Example:
-        \begin{lstlisting}
+	      \end{itemize}
+
+	\item \textbf{Literals}
+	      \begin{itemize}
+		      \item Function: \texttt{handle\_literal}
+		      \item Example:
+		            \begin{lstlisting}
 let x = 42;    // Int(42)
 let y = 3.14;  // Float(3.14)
         \end{lstlisting}
-    \end{itemize}
-    
-    \item \textbf{Binary Operations}
-    \begin{itemize}
-        \item Function: \texttt{handle\_binary\_operation}
-        \item Operators: +, -, *, /, <, >, ==, !=, \&\&, ||
-        \item Errors: Type mismatch, division by zero
-        \item Example:
-        \begin{lstlisting}
+	      \end{itemize}
+
+	\item \textbf{Binary Operations}
+	      \begin{itemize}
+		      \item Function: \texttt{handle\_binary\_operation}
+		      \item Operators: +, -, *, /, <, >, ==, !=, \&\&, ||
+		      \item Errors: Type mismatch, division by zero
+		      \item Example:
+		            \begin{lstlisting}
 let x = 5 + 3;   // Int(8)
 let y = 10 / 0;  // Error
         \end{lstlisting}
-    \end{itemize}
-    
-    \item \textbf{Unary Operations}
-    \begin{itemize}
-        \item Function: \texttt{handle\_unary\_operation}
-        \item Operators: !
-        \item Errors: Invalid logical values
-        \item Example:
-        \begin{lstlisting}
+	      \end{itemize}
+
+	\item \textbf{Unary Operations}
+	      \begin{itemize}
+		      \item Function: \texttt{handle\_unary\_operation}
+		      \item Operators: !
+		      \item Errors: Invalid logical values
+		      \item Example:
+		            \begin{lstlisting}
 let x = !1;  // Int(0)
 let y = !5;  // Error
         \end{lstlisting}
-    \end{itemize}
+	      \end{itemize}
 \end{enumerate}
 
 
 \subsubsection*{Constant Folding}
 Evaluates constant expressions at compile time:
 \begin{itemize}
-    \item \texttt{5 + 3} $\rightarrow$ \texttt{8}
-    \item \texttt{10 / 2} $\rightarrow$ \texttt{5}
+	\item \texttt{5 + 3} $\rightarrow$ \texttt{8}
+	\item \texttt{10 / 2} $\rightarrow$ \texttt{5}
 \end{itemize}
 
 
@@ -1110,7 +1104,7 @@ Challenges encountered during implementation included:
 \subsection{Future Improvements}
 Potential future enhancements include:
 \begin{itemize}
-    \item Add executable generation (binary/bytecode output)
+	\item Add executable generation (binary/bytecode output)
 	\item Additional optimization passes
 	\item Support for functions and procedures
 	\item Enhanced type system with type conversion
