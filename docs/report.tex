@@ -406,154 +406,61 @@ The MiniSoft grammar is formally defined as LR(1) production rules with embedded
 \subsection{Grammar Specification with LALRPOP}
 LALRPOP uses LR(1) parsing techniques to analyze program structure. The grammar for MiniSoft is specified in a declarative format.
 
-\begin{lstlisting}[caption={Grammar File Structure}]
-grammar<'input>;
 
-// External token type from our Logos lexer
-extern {
-    type Location = usize;
-    type Error = String;
-
-    enum Token {
-        "MainPrgm" => Token::MainPrgm,
-        "BeginPg" => Token::BeginPg,
-        // More tokens defined...
-    }
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/parser/grammar-file-structure.png}
+	\caption{Grammar File Structure}
+\end{figure}
 
 Production rules define how language constructs are formed from simpler elements:
 
-\begin{lstlisting}[caption={Program Rule Example}]
-// Program rule (entry point)
-pub Program: Located<Program> = {
-    <l:@L> "MainPrgm" <name:Id> ";" "Var" "BeginPg" <stmts:Scope> "EndPg" ";" <r:@R> => {
-        Located {
-            node: Program {
-                name,
-                declarations: vec![],
-                statements: stmts,
-            },
-            span: l..r,
-        }
-    },
-    // Alternative with declarations
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/parser/program-rule-example.png}
+	\caption{Program Rule Example}
+\end{figure}
 
 \subsection{Abstract Syntax Tree Design}
 The Abstract Syntax Tree (AST) is a hierarchical representation of the program that serves as the foundation for subsequent compilation phases.
 
-\begin{lstlisting}[caption={Core AST Structures}]
-#[derive(Debug, Clone, PartialEq)]
-pub struct Located<T> {
-    pub node: T,
-    pub span: Range<usize>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Program {
-    pub name: String,
-    pub declarations: Vec<Declaration>,
-    pub statements: Vec<Statement>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum StatementKind {
-    Assignment(Expression, Expression),
-    IfThen(Expression, Vec<Statement>),
-    IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
-    DoWhile(Vec<Statement>, Expression),
-    For(Expression, Expression, Expression, Expression, Vec<Statement>),
-    Input(Expression),
-    Output(Vec<Expression>),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ExpressionKind {
-    Identifier(String),
-    ArrayAccess(String, Box<Expression>),
-    Literal(Literal),
-    BinaryOp(Box<Expression>, Operator, Box<Expression>),
-    UnaryOp(UnaryOperator, Box<Expression>),
-}
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/parser/core-ast-structures.png}
+	\caption{Core AST Structures}
+\end{figure}
 
 Each element in the AST is wrapped in a \texttt{Located<T>} structure that contains both the node and its position in the source code.
 
 \subsection{Expression Grammar}
 MiniSoft's expression grammar defines how expressions are parsed with proper operator precedence:
 
-\begin{lstlisting}[caption={Expression Grammar Example}]
-// Expression rules with precedence
-Expression: Located<ExpressionKind> = {
-    LogicalExpr,
-};
-
-LogicalExpr: Located<ExpressionKind> = {
-    <l:@L> <lhs:LogicalExpr> "OR" <rhs:ComparisonExpr> <r:@R> => {
-        Located {
-            node: ExpressionKind::BinaryOp(Box::new(lhs), Operator::Or, Box::new(rhs)),
-            span: l..r,
-        }
-    },
-    ComparisonExpr,
-};
-
-// Lower precedence rules would follow...
-\end{lstlisting}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/parser/expression-grammar-example.png}
+	\caption{Expression Grammar Structure}
+\end{figure}
 
 This grammar ensures operators are evaluated in the correct precedence order, from highest to lowest:
 \begin{enumerate}
 	\item Parenthesized expressions and primary expressions
-	\item Unary operators
 	\item Multiplicative operators (*, /)
 	\item Additive operators (+, -)
 	\item Comparison operators (==, !=, <, >, <=, >=)
+	\item Unary operators (!)
 	\item Logical operators (AND, OR)
 \end{enumerate}
 
 \subsection{Error Handling and Reporting}
 The parser detects and reports the first encountered syntax error with detailed feedback, then immediately terminates compilation to ensure prompt error resolution.
-\begin{lstlisting}[caption={Syntax Error Types}]
-#[derive(Debug)]
-pub enum SyntaxError {
-    InvalidToken {
-        position: usize,
-        message: String,
-        line: usize,
-        column: usize,
-    },
-    UnexpectedEOF {
-        position: usize,
-        expected: Vec<String>,
-        line: usize,
-        column: usize,
-    },
-    UnexpectedToken {
-        token: String,
-        position: (usize, usize),
-        expected: Vec<String>,
-        line: usize,
-        column: usize,
-    },
-    // Other error types...
-}
-\end{lstlisting}
 
-This produces clear error output:
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{images/parser/syntax-error-types.png}
+	\caption{Syntax Error Types}
+\end{figure}
 
-\begin{lstlisting}[caption={Syntax Error Output}]
-Syntax Error: Unexpected token '}'
---> line 15, column 3
-  |
-15 | if (x > 10) then {
-  |   output("Value too large");
-  | }
-  |   ^
-Expected one of: ';'
-Suggestion: Missing semicolon at the end of statement before this closing brace
-\end{lstlisting}
+A detailed example of the output is provided in the error handling section
 
 \section{Semantic Analysis}
 \subsection{Overview of Semantic Analysis}
