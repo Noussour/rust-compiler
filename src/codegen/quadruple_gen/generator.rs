@@ -51,6 +51,7 @@ impl QuadrupleGenerator {
             _ => {}
         }
     }
+
     fn generate_statement(&mut self, statement: &Statement) {
         match &statement.node {
             StatementKind::Assignment(lhs, rhs) => {
