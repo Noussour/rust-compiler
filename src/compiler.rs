@@ -1,5 +1,5 @@
 use crate::codegen::generator::CodeGenerator;
-use crate::codegen::quadruple::QuadrupleProgram;
+use crate::codegen::quadruple_gen::quadruple::QuadrupleProgram;
 use crate::error_reporter::ErrorReportFormatter;
 use crate::lexer::lexer_core::{tokenize, TokenWithMetaData};
 use crate::parser::ast::{LiteralKind, Program};
