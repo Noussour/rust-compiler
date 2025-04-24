@@ -15,7 +15,7 @@ impl QuadrupleGenerator {
         }
     }
 
-    pub fn generate_code(&mut self, ast: &Program) -> Option<QuadrupleProgram> {
+    pub fn generate_quadruples(&mut self, ast: &Program) -> Option<QuadrupleProgram> {
         // Process each declaration in the program
         for declaration in &ast.declarations {
             self.generate_declaration(declaration);
@@ -42,10 +42,10 @@ impl QuadrupleGenerator {
             DeclarationKind::Array(names, typ, size) => {
                 for name in names {
                     self.program.add(Quadruple {
-                        operation: Operation::DeclareArray(typ.clone(), *size),
+                        operation: Operation::DeclareArray(typ.clone(), *size), 
                         operand1: Operand::Empty,
                         operand2: Operand::Empty,
-                        result: Operand::Variable(name.clone()),
+                        result: Operand::ArrayVariable(name.clone(), *size),
                     });
                 }
             }
@@ -66,7 +66,7 @@ impl QuadrupleGenerator {
                         operation: Operation::DeclareArray(typ.clone(), *size), // Fixed to include type
                         operand1: Operand::Empty,
                         operand2: Operand::Empty,
-                        result: Operand::Variable(name.clone()),
+                        result: Operand::ArrayVariable(name.clone(), *size),
                     });
 
                     // Rest of initialization code is correct
@@ -83,12 +83,23 @@ impl QuadrupleGenerator {
             }
             DeclarationKind::Constant(name, type_val, value) => {
                 // Use the existing DeclareVariable operation
-                self.program.add(Quadruple {
-                    operation: Operation::DeclareVariable(type_val.clone()),
-                    operand1: Operand::Empty,
-                    operand2: Operand::Empty,
-                    result: Operand::Variable(name.clone()),
-                });
+                if let LiteralKind::Float(val) = value.node {
+                    // Handle float literal
+                    self.program.add(Quadruple {
+                        operation: Operation::DeclareVariable(type_val.clone()),
+                        operand1: Operand::FloatLiteral(val),
+                        operand2: Operand::Empty,
+                        result: Operand::Variable(name.clone()),
+                    });
+                } else if let LiteralKind::Int(val) = value.node {
+                    self.program.add(Quadruple {
+                        operation: Operation::DeclareVariable(type_val.clone()),
+                        operand1: Operand::IntLiteral(val),
+                        operand2: Operand::Empty,
+                        result: Operand::Variable(name.clone()),
+                    });
+                }
+                
 
                 // Rest of your code handling the value setting is correct
                 let const_value = match value.node {

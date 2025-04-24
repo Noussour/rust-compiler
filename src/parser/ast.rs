@@ -53,10 +53,10 @@ impl Type {
             (Type::Int, Type::Int) => true,
             (Type::Float, Type::Float) => true,
             (Type::String, Type::String) => true,
-            
+
             // Int can be converted to Float
             // (Type::Int, Type::Float) => true,
-            
+
             // All other combinations are incompatible
             _ => false,
         }
@@ -79,7 +79,13 @@ pub enum StatementKind {
     IfThen(Expression, Vec<Statement>),
     IfThenElse(Expression, Vec<Statement>, Vec<Statement>),
     DoWhile(Vec<Statement>, Expression),
-    For(Expression, Expression, Expression, Expression, Vec<Statement>),
+    For(
+        Expression,
+        Expression,
+        Expression,
+        Expression,
+        Vec<Statement>,
+    ),
     Input(Expression),
     Output(Vec<Expression>),
     Scope(Vec<Statement>),

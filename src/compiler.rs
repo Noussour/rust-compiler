@@ -1,11 +1,11 @@
 use crate::codegen::generator::CodeGenerator;
 use crate::codegen::quadruple_gen::quadruple::QuadrupleProgram;
 use crate::error_reporter::ErrorReportFormatter;
-use crate::lexer::lexer_core::{tokenize, TokenWithMetaData};
+use crate::lexer::lexer_core::{TokenWithMetaData, tokenize};
 use crate::parser::ast::{LiteralKind, Program};
 use crate::parser::parser_core::parse;
 use crate::semantics::symbol_table::SymbolValue;
-use crate::semantics::{symbol_table::SymbolKind, SemanticAnalyzer};
+use crate::semantics::{SemanticAnalyzer, symbol_table::SymbolKind};
 use colored::*;
 use std::fs;
 
@@ -114,12 +114,25 @@ impl Compiler {
         let mut code_generator = CodeGenerator::new();
 
         // Store the generated quadruples
-        self.quadruples = code_generator.generate_code(program);
+        self.quadruples = code_generator.quadrupl_gen.generate_quadruples(program);
 
         // Print the generated quadruples
         self.print_quadruples();
 
-        println!("{}", "Code generation completed successfully.".green());
+        let target_dir = std::path::Path::new("./examples/target");
+        if !target_dir.exists() {
+            std::fs::create_dir_all(target_dir).expect("Failed to create target directory");
+        }
+        let result = code_generator.generate_code(program, &target_dir.join("output"));
+
+        if let Err(e) = result {
+            println!("{}", format!("Code generation failed with error: {}", e).red());
+            return Err(1);
+        }
+
+        
+        println!("{}", "Code generation completed successfully.".green());        
+
         Ok(())
     }
 

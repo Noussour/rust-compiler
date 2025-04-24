@@ -54,6 +54,7 @@ pub enum Operand {
     StringLiteral(String),
     Variable(String),            // Simple variable
     TempVariable(String),        // Compiler-generated temporary
+    ArrayVariable(String, usize),       // Array variable
     ArrayElement(String, Box<Operand>), // Array with index
     Empty,
 }
@@ -146,6 +147,7 @@ impl fmt::Display for Operand {
             Operand::StringLiteral(val) => write!(f, "\"{}\"", val),
             Operand::Variable(name) => write!(f, "{}", name),
             Operand::TempVariable(name) => write!(f, "{}", name),
+            Operand::ArrayVariable(name, _) => write!(f, "{}", name),
             Operand::ArrayElement(name, idx) => write!(f, "{}[{}]", name, idx),
             Operand::Empty => write!(f, "_"),
         }
