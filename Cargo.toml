@@ -6,10 +6,6 @@ build = "build.rs" # For LALRPOP integration
 
 [dependencies]
 colored = "3.0.0"
-cranelift = "0.118.0"
-cranelift-codegen = "0.118.0"
-cranelift-module = "0.118.0"
-cranelift-native = "0.118.0"
 lalrpop = "0.22.1"
 lalrpop-util = "0.22.1"
 logos = "0.15.0"

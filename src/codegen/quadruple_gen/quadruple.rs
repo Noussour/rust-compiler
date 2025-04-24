@@ -1,8 +1,12 @@
 use std::fmt;
+use crate::parser::ast::Type;
 
 /// Represents the type of operation in a quadruple
 #[derive(Debug, Clone, PartialEq)]
 pub enum Operation {
+    // Declaration operations
+    DeclareVariable(Type),
+    DeclareArray(Type, usize),
     // Arithmetic operations
     Add,
     Subtract,
@@ -104,6 +108,8 @@ impl QuadrupleProgram {
 impl fmt::Display for Operation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Operation::DeclareVariable(typ) => write!(f, "DECLARE_VAR_{}", typ),
+            Operation::DeclareArray(typ, size) => write!(f, "DECLARE_ARR_{}_{}", typ, size),
             Operation::Add => write!(f, "ADD"),
             Operation::Subtract => write!(f, "SUB"),
             Operation::Multiply => write!(f, "MUL"),

@@ -1,6 +1,7 @@
 use super::quadruple::{Operand, Operation, Quadruple, QuadrupleProgram};
 use crate::parser::ast::{
-    Declaration,DeclarationKind, Expression, ExpressionKind, LiteralKind, Operator, Program, Statement, StatementKind, UnaryOperator
+    Declaration, DeclarationKind, Expression, ExpressionKind, LiteralKind, Operator, Program,
+    Statement, StatementKind, UnaryOperator,
 };
 
 pub struct QuadrupleGenerator {
@@ -28,30 +29,82 @@ impl QuadrupleGenerator {
     fn generate_declaration(&mut self, declaration: &Declaration) {
         // Handle variable declarations
         match &declaration.node {
-            DeclarationKind::Variable(names, _type) => {
+            DeclarationKind::Variable(names, typ) => {
                 for name in names {
                     self.program.add(Quadruple {
-                        operation: Operation::Declare,
+                        operation: Operation::DeclareVariable(typ.clone()),
                         operand1: Operand::Empty,
                         operand2: Operand::Empty,
                         result: Operand::Variable(name.clone()),
                     });
                 }
             }
-            DeclarationKind::Array(names, _type, size) => {
+            DeclarationKind::Array(names, typ, size) => {
                 for name in names {
                     self.program.add(Quadruple {
-                        operation: Operation::DeclareArray(*size),
+                        operation: Operation::DeclareArray(typ.clone(), *size),
                         operand1: Operand::Empty,
                         operand2: Operand::Empty,
                         result: Operand::Variable(name.clone()),
                     });
                 }
             }
-            _ => {}
+            DeclarationKind::VariableWithInit(names, typ, init_expr) => {
+                for name in names {
+                    let init_value = self.generate_expression(init_expr);
+                    self.program.add(Quadruple {
+                        operation: Operation::DeclareVariable(typ.clone()),
+                        operand1: init_value,
+                        operand2: Operand::Empty,
+                        result: Operand::Variable(name.clone()),
+                    });
+                }
+            }
+            DeclarationKind::ArrayWithInit(names, typ, size, init_exprs) => {
+                for name in names {
+                    self.program.add(Quadruple {
+                        operation: Operation::DeclareArray(typ.clone(), *size), // Fixed to include type
+                        operand1: Operand::Empty,
+                        operand2: Operand::Empty,
+                        result: Operand::Variable(name.clone()),
+                    });
+
+                    // Rest of initialization code is correct
+                    for (i, expr) in init_exprs.iter().enumerate() {
+                        let init_value = self.generate_expression(expr);
+                        self.program.add(Quadruple {
+                            operation: Operation::ArrayStore,
+                            operand1: init_value,
+                            operand2: Operand::IntLiteral(i as i32),
+                            result: Operand::Variable(name.clone()),
+                        });
+                    }
+                }
+            }
+            DeclarationKind::Constant(name, type_val, value) => {
+                // Use the existing DeclareVariable operation
+                self.program.add(Quadruple {
+                    operation: Operation::DeclareVariable(type_val.clone()),
+                    operand1: Operand::Empty,
+                    operand2: Operand::Empty,
+                    result: Operand::Variable(name.clone()),
+                });
+
+                // Rest of your code handling the value setting is correct
+                let const_value = match value.node {
+                    LiteralKind::Int(val) => Operand::IntLiteral(val),
+                    LiteralKind::Float(val) => Operand::FloatLiteral(val),
+                    LiteralKind::String(ref val) => Operand::StringLiteral(val.clone()),
+                };
+                self.program.add(Quadruple {
+                    operation: Operation::Assign,
+                    operand1: const_value,
+                    operand2: Operand::Empty,
+                    result: Operand::Variable(name.clone()),
+                });
+            }
         }
     }
-
     fn generate_statement(&mut self, statement: &Statement) {
         match &statement.node {
             StatementKind::Assignment(lhs, rhs) => {

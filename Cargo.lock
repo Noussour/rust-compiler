@@ -203,17 +203,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cranelift"
-version = "0.118.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e482b051275b415cf7627bb6b26e9902ce6aec058b443266c2a1e7a0de148960"
-dependencies = [
- "cranelift-codegen",
- "cranelift-frontend",
- "cranelift-module",
-]
-
-[[package]]
 name = "cranelift-assembler-x64"
 version = "0.118.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -300,18 +289,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2c67d95507c51b4a1ff3f3555fe4bfec36b9e13c1b684ccc602736f5d5f4a2"
 dependencies = [
  "cranelift-bitset",
-]
-
-[[package]]
-name = "cranelift-frontend"
-version = "0.118.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e002691cc69c38b54fc7ec93e5be5b744f627d027031d991cc845d1d512d0ce"
-dependencies = [
- "cranelift-codegen",
- "log",
- "smallvec",
- "target-lexicon",
 ]
 
 [[package]]
@@ -754,11 +731,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
- "cranelift",
- "cranelift-codegen",
  "cranelift-jit",
- "cranelift-module",
- "cranelift-native",
  "lalrpop",
  "lalrpop-util",
  "logos",
